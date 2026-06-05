@@ -5,8 +5,10 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// Vuexy purple — matches the web admin portal brand.
+// Same tint in both modes; Paper handles the surrounding surface colors.
+const tintColorLight = '#7367F0';
+const tintColorDark = '#7367F0';
 
 export const Colors = {
   light: {
