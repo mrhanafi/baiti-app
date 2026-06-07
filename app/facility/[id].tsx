@@ -38,6 +38,9 @@ type Facility = {
   cancellation_window_hours: number;
   deposit_amount: number;
   requires_approval: boolean;
+  closed_until: string | null;
+  closed_reason: string | null;
+  currently_closed: boolean;
 };
 
 type Slot = {
@@ -172,7 +175,19 @@ export default function FacilityDetailScreen() {
               </Card.Content>
             </Card>
 
-            {facility.type === 'open_access' ? (
+            {/* Maintenance closure banner */}
+            {facility.currently_closed ? (
+              <View style={styles.maintenanceBanner}>
+                <Icon source="wrench" size={20} color="#fff" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.maintenanceTitle}>Closed for maintenance</Text>
+                  <Text style={styles.maintenanceBody}>
+                    {facility.closed_reason ? facility.closed_reason : 'Under maintenance.'}
+                    {facility.closed_until ? ` Reopens ${new Date(facility.closed_until).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}.` : ''}
+                  </Text>
+                </View>
+              </View>
+            ) : facility.type === 'open_access' ? (
               <Card style={[styles.card, { backgroundColor: '#f3f4f6' }]}>
                 <Card.Content>
                   <Text variant="bodySmall" style={{ textAlign: 'center', opacity: 0.75 }}>
@@ -388,4 +403,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 10, minHeight: 80,
     textAlignVertical: 'top', fontSize: 15, color: '#1f2937',
   },
+
+  maintenanceBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#dc2626', borderRadius: 12,
+    padding: 14, marginBottom: 12,
+  },
+  maintenanceTitle: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  maintenanceBody: { color: '#fee2e2', fontSize: 13, marginTop: 2 },
 });

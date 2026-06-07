@@ -22,6 +22,9 @@ type Facility = {
   type: 'open_access' | 'bookable';
   deposit_amount: number;
   requires_approval: boolean;
+  closed_until: string | null;
+  closed_reason: string | null;
+  currently_closed: boolean;
 };
 
 export default function FacilityListScreen() {
@@ -91,6 +94,14 @@ export default function FacilityListScreen() {
                         <Icon source={f.icon_mdi} size={56} color={PRIMARY} />
                       </View>
                     )}
+                    {f.currently_closed ? (
+                      <View style={styles.maintenanceBanner}>
+                        <Icon source="wrench" size={14} color="#fff" />
+                        <Text style={styles.maintenanceBannerText} numberOfLines={1}>
+                          Closed for maintenance
+                        </Text>
+                      </View>
+                    ) : null}
                     <Card.Content style={styles.cardContent}>
                       <View style={styles.titleRow}>
                         <Icon source={f.icon_mdi} size={18} color={PRIMARY} />
@@ -151,4 +162,11 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 6 },
   pill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999 },
   pillText: { fontSize: 10, fontWeight: '700' },
+
+  maintenanceBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: '#dc2626',
+    paddingHorizontal: 8, paddingVertical: 4,
+  },
+  maintenanceBannerText: { color: '#fff', fontWeight: '700', fontSize: 11 },
 });
