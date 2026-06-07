@@ -44,6 +44,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     const inEventGroup = firstSeg === 'event';
     const inAnnouncementsGroup = firstSeg === 'announcements';
     const inMaintenanceGroup = firstSeg === 'maintenance';
+    const inFacilityGroup = firstSeg === 'facility';
     const inGuardPassGroup = firstSeg === 'guard-pass';
     const inGuardSosGroup = firstSeg === 'guard-sos';
     const inGuardScanGroup = firstSeg === 'guard-scan';
@@ -82,7 +83,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       }
       return;
     }
-    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inMaintenanceGroup;
+    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inMaintenanceGroup || inFacilityGroup;
     if (!inAllowedOwnerRoute) {
       router.replace('/(tabs)');
     }
@@ -129,6 +130,7 @@ export default function RootLayout() {
                   <Stack.Screen name="event" />
                   <Stack.Screen name="announcements" />
                   <Stack.Screen name="maintenance" />
+                  <Stack.Screen name="facility" />
                 </Stack>
               </AuthGate>
               </PushListeners>
