@@ -18,7 +18,13 @@ export function PushListeners({ children }: { children: ReactNode }) {
     // Tap-while-app-running OR tap-from-killed-state (Expo replays it).
     const tapSub = Notifications.addNotificationResponseReceivedListener((response) => {
       const data = response.notification.request.content.data as
-        | { kind?: string; event_id?: string }
+        | {
+            kind?: string;
+            event_id?: string;
+            pass_id?: string;
+            announcement_id?: string;
+            report_id?: string;
+          }
         | undefined;
       const kind = data?.kind;
 
@@ -26,6 +32,12 @@ export function PushListeners({ children }: { children: ReactNode }) {
         router.push('/guard-sos');
       } else if (kind === 'sos.responding' || kind === 'sos.resolved') {
         router.push('/(tabs)');
+      } else if (kind === 'visitor.arrived' && data?.pass_id) {
+        router.push({ pathname: '/visitor/[id]', params: { id: data.pass_id } });
+      } else if (kind === 'announcement.published' && data?.announcement_id) {
+        router.push({ pathname: '/announcements/[id]', params: { id: data.announcement_id } });
+      } else if (kind === 'maintenance.update' && data?.report_id) {
+        router.push({ pathname: '/maintenance/[id]', params: { id: data.report_id } });
       }
     });
 
