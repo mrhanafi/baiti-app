@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/lib/auth/session';
 import { GuardSessionProvider, useGuardSession } from '@/lib/guard/session';
+import { PushListeners } from '@/lib/push/listeners';
 import { paperDarkTheme, paperLightTheme } from '@/lib/theme/paper-theme';
 import { ThemePrefProvider, useThemePref } from '@/lib/theme/provider';
 
@@ -111,6 +112,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
             <GuardSessionProvider>
+              <PushListeners>
               <AuthGate>
                 <Stack screenOptions={{ headerShown: false }}>
                   <Stack.Screen name="(auth)" />
@@ -129,6 +131,7 @@ export default function RootLayout() {
                   <Stack.Screen name="maintenance" />
                 </Stack>
               </AuthGate>
+              </PushListeners>
             </GuardSessionProvider>
           </AuthProvider>
         </QueryClientProvider>

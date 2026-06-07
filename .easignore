@@ -42,8 +42,4 @@ app-example
 /ios
 /android
 
-google-services.json
-
-# Firebase Admin SDK service account (contains private key — never commit)
-*-firebase-adminsdk-*.json
 

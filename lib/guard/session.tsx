@@ -2,6 +2,7 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, u
 import { AppState, AppStateStatus } from 'react-native';
 
 import { apiFetch } from '@/lib/api/client';
+import { getExpoPushToken } from '@/lib/push/register';
 import {
   CachedShift,
   clearCachedShift,
@@ -115,6 +116,21 @@ export function GuardSessionProvider({ children }: { children: ReactNode }) {
     await clearCachedShift();
     setPaired(true);
     setShift(null);
+    // Best-effort push token registration. Doesn't block pairing if denied.
+    void registerGuardPushToken();
+  }
+
+  async function registerGuardPushToken() {
+    try {
+      const token = await getExpoPushToken();
+      if (!token) return;
+      await apiFetch('/api/v1/guard/devices/push-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      // ignore
+    }
   }
 
   const refreshShift = useCallback(async () => {
@@ -187,6 +203,8 @@ export function GuardSessionProvider({ children }: { children: ReactNode }) {
       if (minutesAway >= FOREGROUND_RECHECK_MINUTES) {
         await refreshShift();
       }
+      // Re-register push token on every foreground — Expo can rotate it.
+      void registerGuardPushToken();
     }
     const sub = AppState.addEventListener('change', onChange);
     return () => sub.remove();

@@ -2,6 +2,7 @@ import { createContext, ReactNode, useContext, useEffect, useState } from 'react
 
 import { apiFetch } from '@/lib/api/client';
 import { clearToken, getDeviceMode, getToken, setToken } from '@/lib/auth/storage';
+import { getExpoPushToken } from '@/lib/push/register';
 
 export type Organization = {
   id: string;
@@ -73,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const data = await apiFetch('/api/v1/me');
         setUser(data);
+        // Refresh push token on app boot — Expo can rotate it.
+        void registerPushToken('/api/v1/me/push-token');
       } catch {
         // Token bad or backend unreachable — clear it so we land on login.
         await clearToken();
@@ -98,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await apiFetch('/api/v1/me');
     console.log('[auth] signIn done — user set', { orgs: me?.organizations?.length, units: me?.units?.length });
     setUser(me);
+    // Best-effort push token registration. Won't block login if it fails.
+    void registerPushToken('/api/v1/me/push-token');
   }
 
   async function signUp(payload: RegisterPayload) {
@@ -114,6 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await apiFetch('/api/v1/me');
     console.log('[auth] signUp done — user set');
     setUser(me);
+    void registerPushToken('/api/v1/me/push-token');
+  }
+
+  // Fetch an Expo push token and POST it to the given endpoint. Silent on
+  // failure — push is best-effort, never block the user.
+  async function registerPushToken(endpoint: string) {
+    try {
+      const token = await getExpoPushToken();
+      if (!token) return;
+      await apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      // ignore
+    }
   }
 
   async function refreshUser() {
