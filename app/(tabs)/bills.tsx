@@ -1,18 +1,198 @@
-import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { PurpleHeader } from '@/components/purple-header';
+import { TabletContainer } from '@/components/tablet-container';
+import { apiFetch } from '@/lib/api/client';
+
+const PRIMARY = '#7367F0';
+
+type Invoice = {
+  id: string;
+  invoice_number: string;
+  period_label: string;
+  total: number;
+  status: 'draft' | 'issued' | 'paid' | 'overdue' | 'cancelled';
+  issue_date: string;
+  due_date: string;
+  paid_at: string | null;
+  days_overdue: number;
+  unit_number: string | null;
+  jmb_name: string | null;
+};
 
 export default function BillsScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiFetch('/api/v1/me/invoices');
+      setInvoices(data.invoices ?? []);
+    } catch {
+      setInvoices([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
+
+  const outstanding = invoices.filter((i) => i.status === 'issued' || i.status === 'overdue');
+  const history = invoices.filter((i) => i.status === 'paid' || i.status === 'cancelled');
+  const totalOutstanding = outstanding.reduce((sum, i) => sum + i.total, 0);
+
   return (
     <View style={styles.container}>
-      <Text variant="headlineSmall">Bills</Text>
-      <Text variant="bodyMedium" style={styles.subtitle}>
-        Billing module coming in a later chunk.
-      </Text>
+      <PurpleHeader title="Bills" />
+
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+        <TabletContainer>
+          {loading && !refreshing ? (
+            <View style={styles.center}><ActivityIndicator /></View>
+          ) : invoices.length === 0 ? (
+            <View style={styles.center}>
+              <Icon source="receipt-text-outline" size={56} color="#9ca3af" />
+              <Text variant="bodyMedium" style={styles.emptyText}>
+                No invoices yet.{'\n'}When your JMB issues one, it'll show up here.
+              </Text>
+            </View>
+          ) : (
+            <>
+              {/* Outstanding summary */}
+              {outstanding.length > 0 ? (
+                <View style={styles.summaryCard}>
+                  <Text style={styles.summaryLabel}>Outstanding</Text>
+                  <Text style={styles.summaryAmount}>RM {totalOutstanding.toFixed(2)}</Text>
+                  <Text style={styles.summaryMeta}>
+                    {outstanding.length} unpaid invoice{outstanding.length === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              ) : null}
+
+              {/* Outstanding list */}
+              {outstanding.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Unpaid</Text>
+                  {outstanding.map((inv) => (
+                    <InvoiceCard key={inv.id} invoice={inv} onPress={() => router.push(`/billing/${inv.id}` as any)} />
+                  ))}
+                </View>
+              ) : null}
+
+              {/* History */}
+              {history.length > 0 ? (
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>History</Text>
+                  {history.map((inv) => (
+                    <InvoiceCard key={inv.id} invoice={inv} onPress={() => router.push(`/billing/${inv.id}` as any)} />
+                  ))}
+                </View>
+              ) : null}
+            </>
+          )}
+        </TabletContainer>
+      </ScrollView>
     </View>
   );
 }
 
+function InvoiceCard({ invoice, onPress }: { invoice: Invoice; onPress: () => void }) {
+  const statusColors: Record<string, { bg: string; fg: string; label: string }> = {
+    issued: { bg: '#fef3c7', fg: '#92400e', label: 'Unpaid' },
+    overdue: { bg: '#fee2e2', fg: '#b91c1c', label: 'Overdue' },
+    paid: { bg: '#d1fae5', fg: '#065f46', label: 'Paid' },
+    cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'Cancelled' },
+    draft: { bg: '#f3f4f6', fg: '#6b7280', label: 'Draft' },
+  };
+  const sc = statusColors[invoice.status] ?? statusColors.draft;
+
+  return (
+    <Pressable onPress={onPress}>
+      <Card style={styles.invoiceCard}>
+        <Card.Content style={styles.invoiceContent}>
+          <View style={styles.invoiceTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.invoicePeriod}>{invoice.period_label}</Text>
+              <Text style={styles.invoiceNumber}>{invoice.invoice_number}</Text>
+              {invoice.unit_number ? (
+                <Text style={styles.invoiceUnit}>Unit {invoice.unit_number}</Text>
+              ) : null}
+            </View>
+            <View style={styles.invoiceRight}>
+              <Text style={styles.invoiceAmount}>RM {invoice.total.toFixed(2)}</Text>
+              <View style={[styles.pill, { backgroundColor: sc.bg }]}>
+                <Text style={[styles.pillText, { color: sc.fg }]}>{sc.label}</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.invoiceMeta}>
+            {invoice.status === 'overdue' ? (
+              <Text style={styles.overdueText}>
+                ⚠ {invoice.days_overdue} day{invoice.days_overdue === 1 ? '' : 's'} overdue
+              </Text>
+            ) : invoice.status === 'paid' ? (
+              <Text style={styles.paidText}>Paid {invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : ''}</Text>
+            ) : (
+              <Text style={styles.dueText}>Due {new Date(invoice.due_date).toLocaleDateString()}</Text>
+            )}
+          </View>
+        </Card.Content>
+      </Card>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
-  subtitle: { marginTop: 8, opacity: 0.6, textAlign: 'center' },
+  container: { flex: 1, backgroundColor: '#f8f7fa' },
+  scroll: { padding: 16 },
+  center: { padding: 64, alignItems: 'center' },
+  emptyText: { marginTop: 12, opacity: 0.65, textAlign: 'center' },
+
+  summaryCard: {
+    backgroundColor: PRIMARY,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  summaryLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 13, marginBottom: 4 },
+  summaryAmount: { color: '#fff', fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
+  summaryMeta: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 4 },
+
+  section: { marginBottom: 24 },
+  sectionTitle: {
+    fontSize: 13, fontWeight: '700', textTransform: 'uppercase',
+    color: '#6b7280', letterSpacing: 0.5,
+    marginBottom: 8, marginLeft: 4,
+  },
+
+  invoiceCard: { marginBottom: 8, backgroundColor: '#fff' },
+  invoiceContent: { paddingVertical: 12 },
+  invoiceTop: { flexDirection: 'row', alignItems: 'flex-start' },
+  invoicePeriod: { fontSize: 11, color: '#6b7280', textTransform: 'uppercase', fontWeight: '600', letterSpacing: 0.5 },
+  invoiceNumber: { fontSize: 14, fontWeight: '600', color: '#111827', marginTop: 2 },
+  invoiceUnit: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  invoiceRight: { alignItems: 'flex-end', gap: 4 },
+  invoiceAmount: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  pill: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999 },
+  pillText: { fontSize: 10, fontWeight: '700' },
+
+  invoiceMeta: { marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
+  overdueText: { fontSize: 12, color: '#b91c1c', fontWeight: '600' },
+  paidText: { fontSize: 12, color: '#065f46' },
+  dueText: { fontSize: 12, color: '#6b7280' },
 });
