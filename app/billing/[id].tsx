@@ -1,14 +1,20 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
 import { apiDownload, apiFetch } from '@/lib/api/client';
+
+// Cache the user-chosen save folder URI so we only ask once.
+// Android SAF only — iOS has its own save-to-Files flow inside the share sheet.
+const ANDROID_SAVE_DIR_KEY = 'baiti.billing.android_save_dir_uri';
 
 type LineItem = { name: string; description: string | null; amount: number };
 type Payment = { gateway: string; amount: number; status: string; paid_at: string | null };
@@ -39,6 +45,7 @@ export default function InvoiceDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -80,7 +87,7 @@ export default function InvoiceDetailScreen() {
     setPaying(false);
   }
 
-  async function handleDownloadReceipt() {
+  async function handleShareReceipt() {
     if (!invoice) return;
     setDownloading(true);
     try {
@@ -102,6 +109,61 @@ export default function InvoiceDetailScreen() {
       Alert.alert('Download failed', e?.message ?? 'Could not download receipt.');
     }
     setDownloading(false);
+  }
+
+  /**
+   * Android-only: save the PDF directly to a folder the user picks once
+   * (usually Downloads). We persist the chosen folder URI so subsequent
+   * saves skip the picker. Uses Storage Access Framework — required on
+   * Android 10+ for writing outside the app's sandbox.
+   */
+  async function handleSaveToDownloads() {
+    if (!invoice || Platform.OS !== 'android') return;
+    setSaving(true);
+    try {
+      const filename = `Receipt-${invoice.invoice_number}.pdf`;
+      const cacheUri = await apiDownload(`/api/v1/me/invoices/${invoice.id}/receipt`, filename);
+
+      // Reuse the previously chosen folder if still valid
+      let dirUri = await AsyncStorage.getItem(ANDROID_SAVE_DIR_KEY);
+      if (dirUri) {
+        try {
+          await FileSystem.StorageAccessFramework.readDirectoryAsync(dirUri);
+        } catch {
+          dirUri = null;   // permission revoked or folder gone — re-ask
+          await AsyncStorage.removeItem(ANDROID_SAVE_DIR_KEY);
+        }
+      }
+      if (!dirUri) {
+        const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Save cancelled', 'No folder was selected.');
+          return;
+        }
+        dirUri = permission.directoryUri;
+        await AsyncStorage.setItem(ANDROID_SAVE_DIR_KEY, dirUri);
+      }
+
+      // Create the destination file inside the chosen folder
+      const destUri = await FileSystem.StorageAccessFramework.createFileAsync(
+        dirUri,
+        filename,
+        'application/pdf',
+      );
+
+      // Copy cache file contents into destination
+      const content = await FileSystem.readAsStringAsync(cacheUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      await FileSystem.writeAsStringAsync(destUri, content, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      Alert.alert('Saved', `${filename} saved to your chosen folder.`);
+    } catch (e: any) {
+      Alert.alert('Save failed', e?.message ?? 'Could not save receipt.');
+    }
+    setSaving(false);
   }
 
   if (loading) {
@@ -239,15 +301,27 @@ export default function InvoiceDetailScreen() {
         </View>
       ) : invoice.status === 'paid' ? (
         <View style={[styles.payBar, { paddingBottom: insets.bottom + 12 }]}>
+          {Platform.OS === 'android' ? (
+            <Button
+              mode="contained"
+              icon="download"
+              loading={saving}
+              disabled={saving || downloading}
+              onPress={handleSaveToDownloads}
+              style={styles.payButton}
+              contentStyle={{ paddingVertical: 6 }}>
+              Save to Downloads
+            </Button>
+          ) : null}
           <Button
-            mode="contained"
-            icon="download"
+            mode={Platform.OS === 'android' ? 'outlined' : 'contained'}
+            icon={Platform.OS === 'android' ? 'share-variant' : 'download'}
             loading={downloading}
-            disabled={downloading}
-            onPress={handleDownloadReceipt}
-            style={styles.payButton}
+            disabled={downloading || saving}
+            onPress={handleShareReceipt}
+            style={[styles.payButton, Platform.OS === 'android' && { marginTop: 8 }]}
             contentStyle={{ paddingVertical: 6 }}>
-            Download receipt
+            {Platform.OS === 'android' ? 'Share' : 'Download receipt'}
           </Button>
         </View>
       ) : null}
