@@ -1,13 +1,17 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Icon, IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabletContainer } from '@/components/tablet-container';
+import { UnitSwitcherModal } from '@/components/unit-switcher-modal';
 import { apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
+
+const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 type TodayPass = {
   id: string;
@@ -52,7 +56,21 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const firstName = user?.name?.split(' ')[0] ?? 'there';
-  const primaryUnit = user?.units?.[0]; // first owned unit
+
+  // Selected unit — persists across launches. Falls back to first unit if
+  // nothing saved or if the saved id no longer matches (e.g. user moved out).
+  const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
+      if (saved && user?.units?.some((u) => u.id === saved)) {
+        setSelectedUnitId(saved);
+      }
+    });
+  }, [user?.units]);
+
+  const primaryUnit = user?.units?.find((u) => u.id === selectedUnitId) ?? user?.units?.[0];
   const primaryProperty = primaryUnit?.property_name ?? 'No property linked';
 
   const hasActiveOrg = (user?.organizations?.length ?? 0) > 0;
@@ -108,12 +126,15 @@ export default function HomeScreen() {
   }
 
   function handlePropertyPress() {
-    // Multi-home switching is queued for a later chunk. Single-property users
-    // get a no-op tap; multi-home users get a placeholder for now.
     if ((user?.units?.length ?? 0) <= 1) {
-      return;
+      return;   // only one unit — no point opening the switcher
     }
-    Alert.alert('Switch property', 'Multi-home switching is coming soon.');
+    setSwitcherOpen(true);
+  }
+
+  async function handleUnitSelected(unitId: string) {
+    setSelectedUnitId(unitId);
+    await AsyncStorage.setItem(SELECTED_UNIT_KEY, unitId);
   }
 
   // Onboarding state: user has signed up but has no active and no pending org.
@@ -340,6 +361,14 @@ export default function HomeScreen() {
         <View style={styles.bottomSpacer} />
        </TabletContainer>
       </ScrollView>
+
+      <UnitSwitcherModal
+        visible={switcherOpen}
+        units={user?.units ?? []}
+        selectedUnitId={primaryUnit?.id ?? null}
+        onDismiss={() => setSwitcherOpen(false)}
+        onSelect={handleUnitSelected}
+      />
     </View>
   );
 }
