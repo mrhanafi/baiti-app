@@ -1,6 +1,28 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
 import { getToken } from '@/lib/auth/storage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8123';
+
+/**
+ * Download a binary file (PDF, image, etc.) from the API to local cache,
+ * with the Sanctum bearer token attached. Returns the local file URI that
+ * can be passed to expo-sharing / Linking.
+ */
+export async function apiDownload(path: string, filename: string): Promise<string> {
+  const token = await getToken();
+  const localUri = `${FileSystem.cacheDirectory}${filename}`;
+
+  const result = await FileSystem.downloadAsync(`${BASE_URL}${path}`, localUri, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  if (result.status < 200 || result.status >= 300) {
+    throw new ApiError(result.status, null, `Download failed with status ${result.status}`);
+  }
+
+  return result.uri;
+}
 
 // Thrown for any non-2xx response. Callers decide how to react (logout on 401,
 // show validation errors on 422, etc.).

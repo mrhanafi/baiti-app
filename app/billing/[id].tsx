@@ -1,4 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
@@ -7,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
-import { apiFetch } from '@/lib/api/client';
+import { apiDownload, apiFetch } from '@/lib/api/client';
 
 type LineItem = { name: string; description: string | null; amount: number };
 type Payment = { gateway: string; amount: number; status: string; paid_at: string | null };
@@ -37,6 +38,7 @@ export default function InvoiceDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -76,6 +78,30 @@ export default function InvoiceDetailScreen() {
       Alert.alert('Payment error', e?.message ?? 'Could not start payment.');
     }
     setPaying(false);
+  }
+
+  async function handleDownloadReceipt() {
+    if (!invoice) return;
+    setDownloading(true);
+    try {
+      const localUri = await apiDownload(
+        `/api/v1/me/invoices/${invoice.id}/receipt`,
+        `Receipt-${invoice.invoice_number}.pdf`,
+      );
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(localUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Receipt — '.concat(invoice.invoice_number),
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        Alert.alert('Receipt downloaded', `Saved to: ${localUri}`);
+      }
+    } catch (e: any) {
+      Alert.alert('Download failed', e?.message ?? 'Could not download receipt.');
+    }
+    setDownloading(false);
   }
 
   if (loading) {
@@ -197,7 +223,7 @@ export default function InvoiceDetailScreen() {
         </TabletContainer>
       </ScrollView>
 
-      {/* Sticky Pay button */}
+      {/* Sticky Pay button (unpaid) OR Download Receipt button (paid) */}
       {isPayable ? (
         <View style={[styles.payBar, { paddingBottom: insets.bottom + 12 }]}>
           <Button
@@ -209,6 +235,19 @@ export default function InvoiceDetailScreen() {
             style={styles.payButton}
             contentStyle={{ paddingVertical: 6 }}>
             Pay RM {invoice.total.toFixed(2)}
+          </Button>
+        </View>
+      ) : invoice.status === 'paid' ? (
+        <View style={[styles.payBar, { paddingBottom: insets.bottom + 12 }]}>
+          <Button
+            mode="contained"
+            icon="download"
+            loading={downloading}
+            disabled={downloading}
+            onPress={handleDownloadReceipt}
+            style={styles.payButton}
+            contentStyle={{ paddingVertical: 6 }}>
+            Download receipt
           </Button>
         </View>
       ) : null}
