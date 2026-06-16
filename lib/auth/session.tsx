@@ -1,7 +1,14 @@
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 import { apiFetch } from '@/lib/api/client';
-import { clearToken, getDeviceMode, getToken, setToken } from '@/lib/auth/storage';
+import {
+  clearRememberedIdentity,
+  clearToken,
+  getDeviceMode,
+  getToken,
+  setRememberedIdentity,
+  setToken,
+} from '@/lib/auth/storage';
 import { getExpoPushToken } from '@/lib/push/register';
 
 export type Organization = {
@@ -45,6 +52,13 @@ type AuthContextValue = {
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Passwordless re-login via 6-digit email code
+  requestLoginCode: (email: string) => Promise<{ expires_at: string }>;
+  verifyLoginCode: (email: string, code: string) => Promise<void>;
+  // Sign in with Google (ID token from expo-auth-session)
+  signInWithGoogle: (idToken: string, avatarUrl?: string | null) => Promise<void>;
+  // Forget the "Continue as <name>" hint when the user picks a different account
+  forgetRememberedIdentity: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -101,6 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await apiFetch('/api/v1/me');
     console.log('[auth] signIn done — user set', { orgs: me?.organizations?.length, units: me?.units?.length });
     setUser(me);
+    await rememberFromUser(me, null);
     // Best-effort push token registration. Won't block login if it fails.
     void registerPushToken('/api/v1/me/push-token');
   }
@@ -119,7 +134,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const me = await apiFetch('/api/v1/me');
     console.log('[auth] signUp done — user set');
     setUser(me);
+    await rememberFromUser(me, null);
     void registerPushToken('/api/v1/me/push-token');
+  }
+
+  async function requestLoginCode(email: string): Promise<{ expires_at: string }> {
+    console.log('[auth] requestLoginCode', { email });
+    return apiFetch('/api/v1/auth/code/request', {
+      method: 'POST',
+      body: JSON.stringify({ email, device_name: 'Expo Go' }),
+    });
+  }
+
+  async function verifyLoginCode(email: string, code: string) {
+    console.log('[auth] verifyLoginCode', { email });
+    const data = await apiFetch('/api/v1/auth/code/verify', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, device_name: 'Expo Go' }),
+    });
+    await setToken(data.token);
+    const me = await apiFetch('/api/v1/me');
+    setUser(me);
+    await rememberFromUser(me, null);
+    void registerPushToken('/api/v1/me/push-token');
+  }
+
+  async function signInWithGoogle(idToken: string, avatarUrl: string | null = null) {
+    console.log('[auth] signInWithGoogle start');
+    const data = await apiFetch('/api/v1/auth/google', {
+      method: 'POST',
+      body: JSON.stringify({ id_token: idToken, device_name: 'Expo Go' }),
+    });
+    await setToken(data.token);
+    const me = await apiFetch('/api/v1/me');
+    setUser(me);
+    await rememberFromUser(me, avatarUrl);
+    void registerPushToken('/api/v1/me/push-token');
+  }
+
+  async function forgetRememberedIdentity() {
+    await clearRememberedIdentity();
+  }
+
+  // Helper: persist the "welcome back" hint after any successful login.
+  async function rememberFromUser(me: User, avatarUrl: string | null) {
+    if (!me?.email || !me?.name) return;
+    await setRememberedIdentity({
+      email: me.email,
+      name: me.name,
+      avatarUrl,
+    });
   }
 
   // Fetch an Expo push token and POST it to the given endpoint. Silent on
@@ -151,12 +215,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log('[auth] signOut: api call failed (ignored)', err);
     }
     await clearToken();
+    // NOTE: deliberately NOT calling clearRememberedIdentity() here — the
+    // welcome-back hint is what powers "Continue as <name>" on the next
+    // visit. Use forgetRememberedIdentity() for the "Use a different
+    // account" link.
     setUser(null);
     console.log('[auth] signOut done — user cleared');
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn,
+        signUp,
+        signOut,
+        refreshUser,
+        requestLoginCode,
+        verifyLoginCode,
+        signInWithGoogle,
+        forgetRememberedIdentity,
+      }}>
       {children}
     </AuthContext.Provider>
   );
