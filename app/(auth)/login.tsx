@@ -1,5 +1,9 @@
-import * as Google from 'expo-auth-session/providers/google';
-import { Link, useRouter } from 'expo-router';
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Avatar, Button, Divider, HelperText, Text, TextInput } from 'react-native-paper';
@@ -10,56 +14,43 @@ import { getRememberedIdentity, RememberedIdentity } from '@/lib/auth/storage';
 
 const PRIMARY = '#7367F0';
 
+// One-time configuration for the native Google Sign-In SDK.
+//   webClientId — audience for the ID token; backend Socialite verifies against this
+//   iosClientId — required on iOS (no SHA-1 mechanism; Android auto-discovers via Play Services)
+const WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const IOS_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+if (WEB_CLIENT_ID) {
+  GoogleSignin.configure({
+    webClientId: WEB_CLIENT_ID,
+    iosClientId: IOS_CLIENT_ID || undefined,
+    offlineAccess: false,
+  });
+}
+
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, signInWithGoogle, requestLoginCode, forgetRememberedIdentity } = useAuth();
+  const { signInWithGoogle, requestLoginCode, forgetRememberedIdentity } = useAuth();
 
   const [remembered, setRemembered] = useState<RememberedIdentity | null>(null);
   const [hintLoaded, setHintLoaded] = useState(false);
 
-  // Standard password form state
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  // Email entry (for "Sign in with email" path)
+  const [emailMode, setEmailMode] = useState(false);
+  const [email, setEmail] = useState('');
+  const [sendingCode, setSendingCode] = useState(false);
+
+  const [reloggingIn, setReloggingIn] = useState(false);
+  const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Re-login (Continue as <name>) state
-  const [reloggingIn, setReloggingIn] = useState(false);
+  const googleConfigured = Boolean(WEB_CLIENT_ID);
 
-  // Google sign-in state — provider configured when env vars are set
-  const [googleBusy, setGoogleBusy] = useState(false);
-  const [, , promptAsync] = Google.useIdTokenAuthRequest({
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
-  const googleConfigured = Boolean(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
-
-  // Load remembered identity once on mount
   useEffect(() => {
     getRememberedIdentity().then((hint) => {
       setRemembered(hint);
       setHintLoaded(true);
     });
   }, []);
-
-  async function handlePasswordSubmit() {
-    setLoading(true);
-    setError(null);
-    try {
-      await signIn(identifier.trim(), password);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 422) {
-        setError('Invalid credentials.');
-      } else if (err instanceof ApiError) {
-        setError(`Login failed (${err.status}).`);
-      } else {
-        setError('Could not reach the server. Check your connection.');
-      }
-    }
-    setLoading(false);
-  }
 
   async function handleGoogle() {
     if (!googleConfigured) {
@@ -69,23 +60,75 @@ export default function LoginScreen() {
     setGoogleBusy(true);
     setError(null);
     try {
-      const result = await promptAsync();
-      if (result?.type !== 'success' || !result.params.id_token) {
-        // User cancelled the picker — silent
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      // Force account picker (don't silent-reuse cached Google session)
+      try {
+        await GoogleSignin.signOut();
+      } catch {
+        // ignore — there might be no cached session
+      }
+      const result = await GoogleSignin.signIn();
+      const idToken =
+        (result as any)?.data?.idToken ?? (result as any)?.idToken ?? null;
+      const avatar =
+        (result as any)?.data?.user?.photo ?? (result as any)?.user?.photo ?? null;
+      if (!idToken) {
+        setError('Google sign-in did not return a token.');
         setGoogleBusy(false);
         return;
       }
-      await signInWithGoogle(result.params.id_token, null);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 409) {
+      // require_code mode: backend sends 6-digit code to the Google email
+      // instead of returning a token. Caller (us) navigates to verify.
+      const { email: verifiedEmail } = await signInWithGoogle(idToken, avatar);
+      router.push({
+        pathname: '/(auth)/code/verify' as never,
+        params: { email: verifiedEmail },
+      });
+    } catch (err: any) {
+      if (isErrorWithCode(err)) {
+        switch (err.code) {
+          case statusCodes.SIGN_IN_CANCELLED:
+            break;
+          case statusCodes.IN_PROGRESS:
+            setError('A sign-in is already in progress.');
+            break;
+          case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+            setError('Google Play Services is missing. Update from Play Store.');
+            break;
+          default:
+            setError(`Google sign-in failed (${err.code}).`);
+        }
+      } else if (err instanceof ApiError && err.status === 409) {
         setError(err.body?.message ?? 'This email is registered with a password.');
       } else if (err instanceof ApiError && err.status === 401) {
-        setError('Google sign-in was rejected.');
+        setError('Google sign-in was rejected by the server.');
       } else {
         setError('Google sign-in failed.');
       }
     }
     setGoogleBusy(false);
+  }
+
+  async function handleSendCode() {
+    if (!email.trim()) return;
+    setSendingCode(true);
+    setError(null);
+    try {
+      await requestLoginCode(email.trim());
+      router.push({
+        pathname: '/(auth)/code/verify' as never,
+        params: { email: email.trim() },
+      });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 429) {
+        setError(err.body?.message ?? 'Too many requests. Wait a moment.');
+      } else if (err instanceof ApiError && err.status === 422) {
+        setError('Please enter a valid email.');
+      } else {
+        setError('Could not send a code. Try again.');
+      }
+    }
+    setSendingCode(false);
   }
 
   async function handleContinueAs() {
@@ -94,7 +137,10 @@ export default function LoginScreen() {
     setError(null);
     try {
       await requestLoginCode(remembered.email);
-      router.push({ pathname: '/(auth)/code/verify' as never, params: { email: remembered.email } });
+      router.push({
+        pathname: '/(auth)/code/verify' as never,
+        params: { email: remembered.email },
+      });
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
         setError(err.body?.message ?? 'Please wait before requesting another code.');
@@ -108,9 +154,10 @@ export default function LoginScreen() {
   async function handleUseDifferentAccount() {
     await forgetRememberedIdentity();
     setRemembered(null);
+    setEmailMode(false);
+    setEmail('');
   }
 
-  // Don't flash the wrong state — wait for the AsyncStorage read
   if (!hintLoaded) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -184,7 +231,7 @@ export default function LoginScreen() {
     );
   }
 
-  // STATE B — fresh / different account (full login options)
+  // STATE B — fresh / different account
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -194,7 +241,7 @@ export default function LoginScreen() {
           Welcome to Baiti
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
-          Sign in to manage your home
+          Sign in or sign up — same flow either way.
         </Text>
 
         {googleConfigured ? (
@@ -203,14 +250,14 @@ export default function LoginScreen() {
             icon="google"
             onPress={handleGoogle}
             loading={googleBusy}
-            disabled={googleBusy || loading}
+            disabled={googleBusy || sendingCode}
             style={styles.button}
             contentStyle={styles.buttonContent}>
             Continue with Google
           </Button>
         ) : null}
 
-        {googleConfigured ? (
+        {googleConfigured && !emailMode ? (
           <View style={styles.dividerRow}>
             <Divider style={styles.dividerLine} />
             <Text style={styles.dividerLabel}>or</Text>
@@ -218,67 +265,62 @@ export default function LoginScreen() {
           </View>
         ) : null}
 
-        <TextInput
-          label="Phone or email"
-          value={identifier}
-          onChangeText={setIdentifier}
-          autoCapitalize="none"
-          autoCorrect={false}
-          keyboardType="email-address"
-          style={styles.input}
-          mode="outlined"
-        />
-        <TextInput
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry={!showPassword}
-          autoCapitalize="none"
-          style={styles.input}
-          mode="outlined"
-          right={
-            <TextInput.Icon
-              icon={showPassword ? 'eye-off' : 'eye'}
-              onPress={() => setShowPassword((v) => !v)}
+        {emailMode ? (
+          <>
+            <TextInput
+              label="Email address"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              keyboardType="email-address"
+              autoFocus
+              style={styles.input}
+              mode="outlined"
             />
-          }
-        />
 
-        {error ? (
-          <HelperText type="error" visible style={styles.error}>
-            {error}
-          </HelperText>
-        ) : null}
+            {error ? (
+              <HelperText type="error" visible style={styles.error}>
+                {error}
+              </HelperText>
+            ) : null}
 
-        <Button
-          mode={googleConfigured ? 'outlined' : 'contained'}
-          onPress={handlePasswordSubmit}
-          loading={loading}
-          disabled={loading || googleBusy || !identifier || !password}
-          style={styles.button}
-          contentStyle={styles.buttonContent}>
-          Sign in with password
-        </Button>
+            <Button
+              mode="contained"
+              onPress={handleSendCode}
+              loading={sendingCode}
+              disabled={sendingCode || !email.trim()}
+              style={styles.button}
+              contentStyle={styles.buttonContent}>
+              Send 6-digit code
+            </Button>
 
-        <View style={styles.footer}>
-          <Text variant="bodyMedium">Don&apos;t have an account? </Text>
-          <Link href="/(auth)/register" replace>
-            <Text variant="bodyMedium" style={styles.link}>
-              Create one
-            </Text>
-          </Link>
-        </View>
+            <Button mode="text" onPress={() => { setEmailMode(false); setError(null); }} textColor="#6b7280">
+              Back
+            </Button>
+          </>
+        ) : (
+          <>
+            {error ? (
+              <HelperText type="error" visible style={styles.error}>
+                {error}
+              </HelperText>
+            ) : null}
+            <Button
+              mode={googleConfigured ? 'outlined' : 'contained'}
+              icon="email-outline"
+              onPress={() => { setEmailMode(true); setError(null); }}
+              style={styles.button}
+              contentStyle={styles.buttonContent}>
+              Sign in with email
+            </Button>
+          </>
+        )}
 
-        <View style={styles.guardFooter}>
-          <Text variant="bodySmall" style={styles.guardFooterLabel}>
-            Setting up a guard tablet?
-          </Text>
-          <Link href="/pair">
-            <Text variant="bodySmall" style={styles.guardFooterLink}>
-              Pair this device
-            </Text>
-          </Link>
-        </View>
+        <Text variant="bodySmall" style={styles.legal}>
+          New here? Just continue — we&apos;ll set up your account during the first sign-in.
+        </Text>
       </View>
     </KeyboardAvoidingView>
   );
@@ -291,11 +333,9 @@ const styles = StyleSheet.create({
   title: { marginBottom: 4 },
   subtitle: { opacity: 0.6, marginBottom: 24 },
   input: { marginBottom: 12 },
-  error: { marginTop: 4 },
+  error: { marginTop: 4, marginBottom: 8 },
   button: { marginTop: 12 },
   buttonContent: { paddingVertical: 6 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20, alignItems: 'center' },
-  link: { color: PRIMARY, fontWeight: '600' },
 
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 16 },
   dividerLine: { flex: 1, backgroundColor: '#e5e7eb' },
@@ -317,7 +357,7 @@ const styles = StyleSheet.create({
   identityName: { fontSize: 16, fontWeight: '600', color: '#111827' },
   identityEmail: { fontSize: 13, color: '#6b7280', marginTop: 2 },
 
-  guardFooter: { flexDirection: 'row', justifyContent: 'center', marginTop: 36, gap: 6 },
-  guardFooterLabel: { opacity: 0.55 },
-  guardFooterLink: { color: PRIMARY, fontWeight: '500' },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 20, alignItems: 'center' },
+
+  legal: { marginTop: 28, textAlign: 'center', opacity: 0.55, paddingHorizontal: 16 },
 });

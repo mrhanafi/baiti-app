@@ -45,6 +45,12 @@ export type RegisterPayload = {
   phone?: string;
 };
 
+// verifyLoginCode now branches based on whether user exists. Returned shape
+// tells the caller (the verify screen) what to do next.
+export type VerifyCodeResult =
+  | { status: 'logged_in' }
+  | { status: 'needs_registration'; email: string; registrationToken: string };
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean; // true while we're checking the stored token on boot
@@ -52,11 +58,19 @@ type AuthContextValue = {
   signUp: (payload: RegisterPayload) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  // Passwordless re-login via 6-digit email code
+  // Passwordless re-login + first-time registration via 6-digit email code
   requestLoginCode: (email: string) => Promise<{ expires_at: string }>;
-  verifyLoginCode: (email: string, code: string) => Promise<void>;
-  // Sign in with Google (ID token from expo-auth-session)
-  signInWithGoogle: (idToken: string, avatarUrl?: string | null) => Promise<void>;
+  verifyLoginCode: (email: string, code: string) => Promise<VerifyCodeResult>;
+  completeRegistration: (params: {
+    email: string;
+    name: string;
+    phone?: string;
+    registrationToken: string;
+  }) => Promise<void>;
+  // Sign in with Google — idToken from @react-native-google-signin native SDK.
+  // Always uses require_code:true; backend fires a 6-digit code instead of
+  // returning a token directly. Caller then navigates to /code/verify.
+  signInWithGoogle: (idToken: string, avatarUrl?: string | null) => Promise<{ email: string }>;
   // Forget the "Continue as <name>" hint when the user picks a different account
   forgetRememberedIdentity: () => Promise<void>;
 };
@@ -146,11 +160,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   }
 
-  async function verifyLoginCode(email: string, code: string) {
+  async function verifyLoginCode(email: string, code: string): Promise<VerifyCodeResult> {
     console.log('[auth] verifyLoginCode', { email });
     const data = await apiFetch('/api/v1/auth/code/verify', {
       method: 'POST',
       body: JSON.stringify({ email, code, device_name: 'Expo Go' }),
+    });
+
+    if (data?.status === 'needs_registration') {
+      // First-time email: caller should navigate to complete-profile screen.
+      // No token to set yet.
+      return {
+        status: 'needs_registration',
+        email: data.email,
+        registrationToken: data.registration_token,
+      };
+    }
+
+    // Existing user — finish the login
+    await setToken(data.token);
+    const me = await apiFetch('/api/v1/me');
+    setUser(me);
+    await rememberFromUser(me, null);
+    void registerPushToken('/api/v1/me/push-token');
+    return { status: 'logged_in' };
+  }
+
+  async function completeRegistration(params: {
+    email: string;
+    name: string;
+    phone?: string;
+    registrationToken: string;
+  }) {
+    console.log('[auth] completeRegistration', { email: params.email });
+    const data = await apiFetch('/api/v1/auth/complete-registration', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: params.email,
+        name: params.name,
+        phone: params.phone ?? null,
+        registration_token: params.registrationToken,
+        device_name: 'Expo Go',
+      }),
     });
     await setToken(data.token);
     const me = await apiFetch('/api/v1/me');
@@ -159,17 +210,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void registerPushToken('/api/v1/me/push-token');
   }
 
-  async function signInWithGoogle(idToken: string, avatarUrl: string | null = null) {
-    console.log('[auth] signInWithGoogle start');
+  async function signInWithGoogle(idToken: string, avatarUrl: string | null = null): Promise<{ email: string }> {
+    console.log('[auth] signInWithGoogle start (require_code mode)');
+    // Server creates/links the user but does NOT return a Sanctum token;
+    // instead it fires a 6-digit code to the user's email. Mobile then runs
+    // the standard /auth/code/verify flow to finish the login. This makes
+    // email-code our second auth factor on top of "Google says you own this
+    // email account on this device".
+    //
+    // Remember the avatar for "Welcome back" card if/when login completes.
     const data = await apiFetch('/api/v1/auth/google', {
       method: 'POST',
-      body: JSON.stringify({ id_token: idToken, device_name: 'Expo Go' }),
+      body: JSON.stringify({
+        id_token: idToken,
+        device_name: 'Expo Go',
+        require_code: true,
+      }),
     });
-    await setToken(data.token);
-    const me = await apiFetch('/api/v1/me');
-    setUser(me);
-    await rememberFromUser(me, avatarUrl);
-    void registerPushToken('/api/v1/me/push-token');
+
+    // Stash the avatar for later — login.tsx will persist the full identity
+    // hint after the user completes code verify + we have the user record.
+    if (avatarUrl) {
+      // We don't have a user object yet, so set a temporary hint with just
+      // email + name=email (will be overwritten when verify succeeds).
+      await setRememberedIdentity({
+        email: data.email,
+        name: data.email,   // placeholder until /me succeeds
+        avatarUrl,
+      });
+    }
+
+    return { email: data.email };
   }
 
   async function forgetRememberedIdentity() {
@@ -234,6 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         refreshUser,
         requestLoginCode,
         verifyLoginCode,
+        completeRegistration,
         signInWithGoogle,
         forgetRememberedIdentity,
       }}>

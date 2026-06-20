@@ -33,13 +33,22 @@ export default function VerifyCodeScreen() {
     setVerifying(true);
     setError(null);
     try {
-      await verifyLoginCode(email, code);
-      // Root auth gate handles the redirect to (tabs)
+      const result = await verifyLoginCode(email, code);
+      if (result.status === 'needs_registration') {
+        // First-time email — collect name + phone on the next screen
+        router.replace({
+          pathname: '/(auth)/complete-profile' as never,
+          params: {
+            email: result.email,
+            registrationToken: result.registrationToken,
+          },
+        });
+        return;
+      }
+      // status === 'logged_in' → root auth gate handles redirect to (tabs)
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 404) {
-          setError('No account for that email. Sign in with Google or contact your JMB.');
-        } else if (err.status === 410) {
+        if (err.status === 410) {
           setError(err.body?.message ?? 'Code expired. Request a new one.');
           setResendIn(0); // unlock the resend button so they can retry
         } else if (err.status === 422) {
