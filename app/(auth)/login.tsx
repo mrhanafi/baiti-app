@@ -244,28 +244,10 @@ export default function LoginScreen() {
           Sign in or sign up — same flow either way.
         </Text>
 
-        {googleConfigured ? (
-          <Button
-            mode="contained"
-            icon="google"
-            onPress={handleGoogle}
-            loading={googleBusy}
-            disabled={googleBusy || sendingCode}
-            style={styles.button}
-            contentStyle={styles.buttonContent}>
-            Continue with Google
-          </Button>
-        ) : null}
-
-        {googleConfigured && !emailMode ? (
-          <View style={styles.dividerRow}>
-            <Divider style={styles.dividerLine} />
-            <Text style={styles.dividerLabel}>or</Text>
-            <Divider style={styles.dividerLine} />
-          </View>
-        ) : null}
-
         {emailMode ? (
+          /* Email path is exclusive — Google button is hidden so the user
+             can focus on entering their email + getting the code. They can
+             tap Back to return to the choice screen. */
           <>
             <TextInput
               label="Email address"
@@ -296,17 +278,44 @@ export default function LoginScreen() {
               Send 6-digit code
             </Button>
 
-            <Button mode="text" onPress={() => { setEmailMode(false); setError(null); }} textColor="#6b7280">
+            <Button
+              mode="text"
+              onPress={() => { setEmailMode(false); setError(null); }}
+              textColor="#6b7280"
+              style={{ marginTop: 8 }}>
               Back
             </Button>
           </>
         ) : (
+          /* Initial choice — Google primary, email outlined alternative. */
           <>
+            {googleConfigured ? (
+              <Button
+                mode="contained"
+                icon="google"
+                onPress={handleGoogle}
+                loading={googleBusy}
+                disabled={googleBusy}
+                style={styles.button}
+                contentStyle={styles.buttonContent}>
+                Continue with Google
+              </Button>
+            ) : null}
+
+            {googleConfigured ? (
+              <View style={styles.dividerRow}>
+                <Divider style={styles.dividerLine} />
+                <Text style={styles.dividerLabel}>or</Text>
+                <Divider style={styles.dividerLine} />
+              </View>
+            ) : null}
+
             {error ? (
               <HelperText type="error" visible style={styles.error}>
                 {error}
               </HelperText>
             ) : null}
+
             <Button
               mode={googleConfigured ? 'outlined' : 'contained'}
               icon="email-outline"
