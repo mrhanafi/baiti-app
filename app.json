@@ -74,6 +74,20 @@
           "color": "#7367F0",
           "defaultChannel": "default"
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.824234453854-ip1t493jp4ppod6fa7lasilb243g19fg"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
       ]
     ],
     "experiments": {

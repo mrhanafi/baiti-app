@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
+import { useCallback, useMemo, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Card, Icon, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiFetch } from '@/lib/api/client';
@@ -40,12 +40,20 @@ const STATE_PILL: Record<string, { bg: string; fg: string; label: (p: Pass) => s
   cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: () => 'Cancelled' },
 };
 
+// Only TWO filters by design — minimises cognitive load for guards who may
+// not read English well. Search reset to 'all' the moment the guard types
+// (see handleSearchChange) so the Inside filter never traps them with
+// confusing empty results.
+type StateFilter = 'all' | 'inside';
+
 export default function GuardTodayScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [passes, setPasses] = useState<Pass[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [stateFilter, setStateFilter] = useState<StateFilter>('all');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,11 +74,99 @@ export default function GuardTodayScreen() {
     setRefreshing(false);
   }
 
+  // When guard starts typing, auto-reset the segment to 'all'. Without this,
+  // a guard who tapped Inside earlier and then types a non-Inside person's
+  // name gets confusing empty results — and for non-English-literate guards
+  // there's no recovery path. Auto-reset removes the trap silently.
+  function handleSearchChange(value: string) {
+    setSearch(value);
+    if (value && stateFilter !== 'all') {
+      setStateFilter('all');
+    }
+  }
+
+  // Count of currently-inside passes — used as a badge on the Inside segment.
+  const insideCount = useMemo(
+    () => passes.filter((p) => p.visit_state === 'inside').length,
+    [passes],
+  );
+
+  // Filter pipeline: segment first, then text search. Search matches visitor
+  // name, vehicle plate, or current visit tag (the short token printed after
+  // scan, e.g. #ABC123 — visible on the Inside pill).
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return passes.filter((p) => {
+      if (stateFilter !== 'all' && p.visit_state !== stateFilter) return false;
+      if (!q) return true;
+      const haystack = [
+        p.visitor_name ?? '',
+        p.vehicle_plate ?? '',
+        p.open_entry?.visit_tag ?? '',
+      ]
+        .join(' ')
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [passes, search, stateFilter]);
+
+  const subtitleText =
+    search || stateFilter !== 'all'
+      ? `${filtered.length} / ${passes.length}`
+      : `${passes.length} today`;
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Text style={styles.title}>Today's passes</Text>
-        <Text style={styles.subtitle}>{passes.length} valid right now</Text>
+        <Text style={styles.subtitle}>{subtitleText}</Text>
+      </View>
+
+      {/* Search bar — filters as the guard types. Targets name, plate, visit
+          tag. When non-empty, also auto-resets the segment to 'all'. */}
+      <Searchbar
+        placeholder="Search name, plate, #tag"
+        value={search}
+        onChangeText={handleSearchChange}
+        style={styles.searchBar}
+        inputStyle={styles.searchInput}
+        elevation={0}
+      />
+
+      {/* Two segment buttons with count badges. Visual language: number +
+          color, so guards who don't read English still understand. Inside
+          segment is green (matches the active/here state pill). */}
+      <View style={styles.segmentRow}>
+        <Pressable
+          onPress={() => setStateFilter('all')}
+          style={[styles.segment, stateFilter === 'all' && styles.segmentActiveAll]}>
+          <Text style={[styles.segmentLabel, stateFilter === 'all' && styles.segmentLabelActive]}>
+            All
+          </Text>
+          <View style={[styles.badge, stateFilter === 'all' && styles.badgeActiveAll]}>
+            <Text style={[styles.badgeText, stateFilter === 'all' && styles.badgeTextActiveAll]}>
+              {passes.length}
+            </Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={() => setStateFilter('inside')}
+          style={[styles.segment, stateFilter === 'inside' && styles.segmentActiveInside]}>
+          <Icon
+            source="account-check"
+            size={16}
+            color={stateFilter === 'inside' ? '#fff' : '#15803d'}
+          />
+          <Text style={[styles.segmentLabel, stateFilter === 'inside' && styles.segmentLabelActive]}>
+            Inside
+          </Text>
+          <View style={[styles.badge, stateFilter === 'inside' && styles.badgeActiveInside]}>
+            <Text style={[styles.badgeText, stateFilter === 'inside' && styles.badgeTextActiveInside]}>
+              {insideCount}
+            </Text>
+          </View>
+        </Pressable>
       </View>
 
       {loading && !refreshing ? (
@@ -82,9 +178,16 @@ export default function GuardTodayScreen() {
             No passes for today.
           </Text>
         </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.center}>
+          <Icon source="magnify" size={48} color="#9ca3af" />
+          <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
+            No results
+          </Text>
+        </View>
       ) : (
         <FlatList
-          data={passes}
+          data={filtered}
           keyExtractor={(p) => p.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
@@ -142,6 +245,79 @@ const styles = StyleSheet.create({
   subtitle: { color: '#fff', opacity: 0.8, marginTop: 4 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+
+  searchBar: {
+    margin: 12,
+    marginBottom: 6,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 12,
+  },
+  searchInput: {
+    fontSize: 14,
+    minHeight: 40,
+  },
+
+  segmentRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    gap: 6,
+  },
+  segmentActiveAll: {
+    backgroundColor: PRIMARY,
+    borderColor: PRIMARY,
+  },
+  segmentActiveInside: {
+    backgroundColor: '#15803d',
+    borderColor: '#15803d',
+  },
+  segmentLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  segmentLabelActive: {
+    color: '#fff',
+  },
+  badge: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeActiveAll: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  badgeActiveInside: {
+    backgroundColor: 'rgba(255,255,255,0.25)',
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  badgeTextActiveAll: {
+    color: '#fff',
+  },
+  badgeTextActiveInside: {
+    color: '#fff',
+  },
 
   list: { padding: 16 },
   card: { marginBottom: 10 },
