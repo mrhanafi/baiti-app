@@ -1,16 +1,20 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 
 import { PurpleHeader } from '@/components/purple-header';
+import { UnitSwitcherModal } from '@/components/unit-switcher-modal';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
 import { formatMyIc, normaliseMyPhone } from '@/lib/format';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
+// Same key as Home tab + Utilities screen — the resident's chosen "active home".
+const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 const PURPOSES = [
   { value: 'cleaner', label: 'Cleaner' },
@@ -31,7 +35,28 @@ export default function NewVisitorScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
+  // The bound home for this visitor pass. Initialised from the same
+  // AsyncStorage key the Home tab writes to, so whatever home the resident
+  // last chose there is the default here. A "Change" link opens the same
+  // UnitSwitcherModal used on Home for multi-home owners.
   const [unitId, setUnitId] = useState<string>(user?.units?.[0]?.id ?? '');
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
+      if (saved && user?.units?.some((u) => u.id === saved)) {
+        setUnitId(saved);
+      } else if (user?.units?.[0]?.id) {
+        setUnitId(user.units[0].id);
+      }
+    });
+  }, [user?.units]);
+
+  function handleSwitchUnit(nextUnitId: string) {
+    setUnitId(nextUnitId);
+    AsyncStorage.setItem(SELECTED_UNIT_KEY, nextUnitId).catch(() => {});
+  }
+
   const [visitorName, setVisitorName] = useState('');
   const [visitorPhone, setVisitorPhone] = useState('');
   const [visitorIc, setVisitorIc] = useState('');
@@ -53,6 +78,10 @@ export default function NewVisitorScreen() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const homes = user?.units ?? [];
+  const boundHome = useMemo(
+    () => homes.find((h) => h.id === unitId) ?? homes[0] ?? null,
+    [homes, unitId],
+  );
 
   // Compute effective from/until based on the selected preset. Custom uses
   // the user-picked dates directly.
@@ -153,24 +182,11 @@ export default function NewVisitorScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator>
-        {/* Unit selector — only shown when user has more than one home. */}
-        {homes.length > 1 ? (
-          <View style={{ marginBottom: 16 }}>
-            <Text variant="labelMedium" style={styles.label}>Which home?</Text>
-            <View style={styles.homeList}>
-              {homes.map((h) => (
-                <Pressable
-                  key={h.id}
-                  onPress={() => setUnitId(h.id)}
-                  style={[styles.homeChip, unitId === h.id && styles.homeChipActive]}>
-                  <Text style={[styles.homeChipText, unitId === h.id && styles.homeChipTextActive]}>
-                    {h.property_name} · {h.unit_number}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        ) : (
+        {/* Bound home for this pass — same UX whether the user has 1 or many.
+            For multi-home owners a "Change" link opens the same modal used on
+            the Home tab; the selection is shared via AsyncStorage so switching
+            here updates Home too. */}
+        {boundHome ? (
           <Card style={styles.contextCard}>
             <Card.Content style={styles.contextContent}>
               <View style={styles.contextIcon}>
@@ -178,15 +194,21 @@ export default function NewVisitorScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                  {homes[0].property_name}
+                  {boundHome.property_name ?? 'Your home'}
                 </Text>
                 <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                  Unit {homes[0].unit_number}
+                  Unit {boundHome.unit_number}
                 </Text>
               </View>
+              {homes.length > 1 ? (
+                <Pressable onPress={() => setSwitcherOpen(true)} style={styles.changeBtn}>
+                  <Text style={styles.changeBtnText}>Change</Text>
+                  <Icon source="chevron-down" size={16} color={PRIMARY} />
+                </Pressable>
+              ) : null}
             </Card.Content>
           </Card>
-        )}
+        ) : null}
 
         <Card style={styles.formCard}>
           <Card.Content>
@@ -322,6 +344,14 @@ export default function NewVisitorScreen() {
         </Button>
       </ScrollView>
       </KeyboardAvoidingView>
+
+      <UnitSwitcherModal
+        visible={switcherOpen}
+        units={homes}
+        selectedUnitId={unitId}
+        onDismiss={() => setSwitcherOpen(false)}
+        onSelect={handleSwitchUnit}
+      />
     </View>
   );
 }
@@ -345,15 +375,11 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_TINT,
     alignItems: 'center', justifyContent: 'center',
   },
-
-  homeList: { gap: 8 },
-  homeChip: {
-    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8,
-    backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: 'transparent',
+  changeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6,
   },
-  homeChipActive: { backgroundColor: PRIMARY_TINT, borderColor: PRIMARY },
-  homeChipText: { color: '#1f2937' },
-  homeChipTextActive: { color: PRIMARY, fontWeight: '600' },
+  changeBtnText: { color: PRIMARY, fontSize: 13, fontWeight: '600' },
 
   purposeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   purposeChip: {

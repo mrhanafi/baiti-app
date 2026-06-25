@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   Image,
@@ -16,12 +17,15 @@ import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-pa
 import { PhotoSourceSheet } from '@/components/photo-source-sheet';
 import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
+import { UnitSwitcherModal } from '@/components/unit-switcher-modal';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { getToken } from '@/lib/auth/storage';
 import { useAuth } from '@/lib/auth/session';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
+// Same key as Home tab + Utilities + visitor/new — the resident's chosen "active home".
+const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8123';
 
 const CATEGORIES = [
@@ -40,7 +44,31 @@ export default function NewReportScreen() {
   const { user } = useAuth();
 
   const homes = user?.units ?? [];
+  // Bound home for this report — initialised from the shared AsyncStorage key
+  // the Home tab + Utilities + visitor/new all use. "Change" link reuses the
+  // same UnitSwitcherModal so the selection stays consistent across the app.
   const [unitId, setUnitId] = useState<string>(homes[0]?.id ?? '');
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
+      if (saved && homes.some((u) => u.id === saved)) {
+        setUnitId(saved);
+      } else if (homes[0]?.id) {
+        setUnitId(homes[0].id);
+      }
+    });
+  }, [homes]);
+
+  const boundHome = useMemo(
+    () => homes.find((h) => h.id === unitId) ?? homes[0] ?? null,
+    [homes, unitId],
+  );
+
+  function handleSwitchUnit(nextUnitId: string) {
+    setUnitId(nextUnitId);
+    AsyncStorage.setItem(SELECTED_UNIT_KEY, nextUnitId).catch(() => {});
+  }
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [location, setLocation] = useState('');
@@ -166,6 +194,30 @@ export default function NewReportScreen() {
           keyboardDismissMode="interactive">
          <TabletContainer>
 
+          {boundHome ? (
+            <Card style={styles.contextCard}>
+              <Card.Content style={styles.contextContent}>
+                <View style={styles.contextIcon}>
+                  <Icon source="home-city" size={24} color={PRIMARY} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="titleSmall" style={{ fontWeight: '600' }}>
+                    {boundHome.property_name ?? 'Your home'}
+                  </Text>
+                  <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
+                    Unit {boundHome.unit_number}
+                  </Text>
+                </View>
+                {homes.length > 1 ? (
+                  <Pressable onPress={() => setSwitcherOpen(true)} style={styles.changeBtn}>
+                    <Text style={styles.changeBtnText}>Change</Text>
+                    <Icon source="chevron-down" size={16} color={PRIMARY} />
+                  </Pressable>
+                ) : null}
+              </Card.Content>
+            </Card>
+          ) : null}
+
           <Card style={styles.card}>
             <Card.Content>
               <TextInput
@@ -261,6 +313,14 @@ export default function NewReportScreen() {
         onTakePhoto={takePhotoWithCamera}
         onPickFromLibrary={pickFromLibrary}
       />
+
+      <UnitSwitcherModal
+        visible={switcherOpen}
+        units={homes}
+        selectedUnitId={unitId}
+        onDismiss={() => setSwitcherOpen(false)}
+        onSelect={handleSwitchUnit}
+      />
     </View>
   );
 }
@@ -269,6 +329,19 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   inner: { padding: 16, paddingBottom: 120 },
   card: { marginBottom: 8, backgroundColor: '#fff' },
+
+  contextCard: { marginBottom: 8 },
+  contextContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  contextIcon: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_TINT,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  changeBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6,
+  },
+  changeBtnText: { color: PRIMARY, fontSize: 13, fontWeight: '600' },
+
   section: { marginTop: 16, marginBottom: 8, fontWeight: '600' },
   input: { marginBottom: 8 },
   hint: { opacity: 0.55, marginTop: 4 },
