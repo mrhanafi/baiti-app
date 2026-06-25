@@ -93,15 +93,24 @@ export default function BillsScreen() {
                 </View>
               ) : null}
 
-              {/* History */}
-              {history.length > 0 ? (
-                <View style={styles.section}>
-                  <Text style={styles.sectionTitle}>History</Text>
-                  {history.map((inv) => (
+              {/* History — always shown so residents know where paid bills land */}
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>History</Text>
+                {history.length > 0 ? (
+                  history.map((inv) => (
                     <InvoiceCard key={inv.id} invoice={inv} onPress={() => router.push(`/billing/${inv.id}` as any)} />
-                  ))}
-                </View>
-              ) : null}
+                  ))
+                ) : (
+                  <Card style={styles.historyEmptyCard}>
+                    <Card.Content style={styles.historyEmptyContent}>
+                      <Icon source="receipt-text-check-outline" size={36} color="#9ca3af" />
+                      <Text variant="bodySmall" style={styles.historyEmptyText}>
+                        No paid bills yet.{'\n'}Once you settle a bill, it lands here.
+                      </Text>
+                    </Card.Content>
+                  </Card>
+                )}
+              </View>
             </>
           )}
         </TabletContainer>
@@ -195,4 +204,8 @@ const styles = StyleSheet.create({
   overdueText: { fontSize: 12, color: '#b91c1c', fontWeight: '600' },
   paidText: { fontSize: 12, color: '#065f46' },
   dueText: { fontSize: 12, color: '#6b7280' },
+
+  historyEmptyCard: { backgroundColor: '#fff' },
+  historyEmptyContent: { alignItems: 'center', paddingVertical: 24 },
+  historyEmptyText: { marginTop: 8, opacity: 0.65, textAlign: 'center' },
 });
