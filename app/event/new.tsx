@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
 
@@ -10,6 +11,8 @@ import { useAuth } from '@/lib/auth/session';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
+// Same key as Home tab + Utilities + Bills + visitor/new + maintenance/new.
+const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 const PURPOSES = [
   { value: 'family', label: 'Family' },
@@ -25,7 +28,25 @@ export default function NewEventScreen() {
   const { user } = useAuth();
 
   const homes = user?.units ?? [];
+  // Bound home for this event — read-only. Sourced from the Home tab's
+  // active-home AsyncStorage key. To create an event for a different home,
+  // switch on the Home tab and come back.
   const [unitId, setUnitId] = useState<string>(homes[0]?.id ?? '');
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
+      if (saved && homes.some((u) => u.id === saved)) {
+        setUnitId(saved);
+      } else if (homes[0]?.id) {
+        setUnitId(homes[0].id);
+      }
+    });
+  }, [homes]);
+
+  const boundHome = useMemo(
+    () => homes.find((h) => h.id === unitId) ?? homes[0] ?? null,
+    [homes, unitId],
+  );
 
   const [title, setTitle] = useState('');
   const [purpose, setPurpose] = useState('family');
@@ -111,24 +132,9 @@ export default function NewEventScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive">
 
-          {/* Unit picker (only if multi-home) */}
-          {homes.length > 1 ? (
-            <View style={{ marginBottom: 16 }}>
-              <Text variant="labelMedium" style={styles.label}>Which home?</Text>
-              <View style={{ gap: 8 }}>
-                {homes.map((h) => (
-                  <Pressable
-                    key={h.id}
-                    onPress={() => setUnitId(h.id)}
-                    style={[styles.homeChip, unitId === h.id && styles.homeChipActive]}>
-                    <Text style={[styles.homeChipText, unitId === h.id && styles.homeChipTextActive]}>
-                      {h.property_name} · {h.unit_number}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : (
+          {/* Bound home — read-only. To create for a different home, switch
+              on the Home tab and come back. */}
+          {boundHome ? (
             <Card style={styles.contextCard}>
               <Card.Content style={styles.contextContent}>
                 <View style={styles.contextIcon}>
@@ -136,100 +142,106 @@ export default function NewEventScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                    {homes[0].property_name}
+                    {boundHome.property_name ?? 'Your home'}
                   </Text>
-                  <Text variant="bodySmall" style={{ opacity: 0.65 }}>Unit {homes[0].unit_number}</Text>
+                  <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
+                    Unit {boundHome.unit_number}
+                  </Text>
                 </View>
               </Card.Content>
             </Card>
-          )}
-
-          <Text variant="titleSmall" style={styles.section}>Event</Text>
-          <TextInput
-            label="Title *"
-            value={title}
-            onChangeText={setTitle}
-            mode="outlined"
-            style={styles.input}
-            placeholder="e.g. Hanafi's wedding, Open house"
-          />
-
-          <Text variant="titleSmall" style={styles.section}>Purpose</Text>
-          <View style={styles.purposeGrid}>
-            {PURPOSES.map((p) => (
-              <Pressable
-                key={p.value}
-                onPress={() => setPurpose(p.value)}
-                style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
-                <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
-                  {p.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <Text variant="titleSmall" style={styles.section}>When</Text>
-          <View style={styles.customRow}>
-            <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
-              <Text variant="labelSmall" style={styles.label}>From</Text>
-              <Text>{validFrom.toLocaleDateString()}</Text>
-            </Pressable>
-            <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
-              <Text variant="labelSmall" style={styles.label}>Until</Text>
-              <Text>{validUntil.toLocaleDateString()}</Text>
-            </Pressable>
-          </View>
-
-          {showFromPicker ? (
-            <DateTimePicker
-              value={validFrom}
-              mode="date"
-              onChange={(_, d) => {
-                setShowFromPicker(false);
-                if (d) {
-                  const next = new Date(d);
-                  next.setHours(0, 0, 0, 0);
-                  setValidFrom(next);
-                }
-              }}
-            />
-          ) : null}
-          {showUntilPicker ? (
-            <DateTimePicker
-              value={validUntil}
-              mode="date"
-              onChange={(_, d) => {
-                setShowUntilPicker(false);
-                if (d) {
-                  const next = new Date(d);
-                  next.setHours(23, 59, 59, 999);
-                  setValidUntil(next);
-                }
-              }}
-            />
           ) : null}
 
-          <Text variant="titleSmall" style={styles.section}>Optional</Text>
-          <TextInput
-            label="Max guests (leave blank for unlimited)"
-            value={maxGuests}
-            onChangeText={(t) => setMaxGuests(t.replace(/\D/g, ''))}
-            mode="outlined"
-            style={styles.input}
-            keyboardType="number-pad"
-          />
-          <TextInput
-            label="Notes for your guests"
-            value={notes}
-            onChangeText={setNotes}
-            mode="outlined"
-            style={styles.input}
-            multiline
-            numberOfLines={3}
-            placeholder="e.g. Park at the visitor bay, take Lift A to floor 12"
-          />
+          <Card style={styles.formCard}>
+            <Card.Content>
+              <Text variant="titleSmall" style={styles.sectionFirst}>Event</Text>
+              <TextInput
+                label="Title *"
+                value={title}
+                onChangeText={setTitle}
+                mode="outlined"
+                style={styles.input}
+                placeholder="e.g. Hanafi's wedding, Open house"
+              />
 
-          {error ? <HelperText type="error" visible style={{ marginTop: 8 }}>{error}</HelperText> : null}
+              <Text variant="titleSmall" style={styles.section}>Purpose</Text>
+              <View style={styles.purposeGrid}>
+                {PURPOSES.map((p) => (
+                  <Pressable
+                    key={p.value}
+                    onPress={() => setPurpose(p.value)}
+                    style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
+                    <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
+                      {p.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Text variant="titleSmall" style={styles.section}>When</Text>
+              <View style={styles.customRow}>
+                <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
+                  <Text variant="labelSmall" style={styles.label}>From</Text>
+                  <Text>{validFrom.toLocaleDateString()}</Text>
+                </Pressable>
+                <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
+                  <Text variant="labelSmall" style={styles.label}>Until</Text>
+                  <Text>{validUntil.toLocaleDateString()}</Text>
+                </Pressable>
+              </View>
+
+              {showFromPicker ? (
+                <DateTimePicker
+                  value={validFrom}
+                  mode="date"
+                  onChange={(_, d) => {
+                    setShowFromPicker(false);
+                    if (d) {
+                      const next = new Date(d);
+                      next.setHours(0, 0, 0, 0);
+                      setValidFrom(next);
+                    }
+                  }}
+                />
+              ) : null}
+              {showUntilPicker ? (
+                <DateTimePicker
+                  value={validUntil}
+                  mode="date"
+                  onChange={(_, d) => {
+                    setShowUntilPicker(false);
+                    if (d) {
+                      const next = new Date(d);
+                      next.setHours(23, 59, 59, 999);
+                      setValidUntil(next);
+                    }
+                  }}
+                />
+              ) : null}
+
+              <Text variant="titleSmall" style={styles.section}>Optional</Text>
+              <TextInput
+                label="Max guests (leave blank for unlimited)"
+                value={maxGuests}
+                onChangeText={(t) => setMaxGuests(t.replace(/\D/g, ''))}
+                mode="outlined"
+                style={styles.input}
+                keyboardType="number-pad"
+              />
+              <TextInput
+                label="Notes for your guests"
+                value={notes}
+                onChangeText={setNotes}
+                mode="outlined"
+                style={styles.input}
+                multiline
+                numberOfLines={3}
+                placeholder="e.g. Park at the visitor bay, take Lift A to floor 12"
+              />
+
+              {error ? <HelperText type="error" visible style={{ marginTop: 8 }}>{error}</HelperText> : null}
+            </Card.Content>
+          </Card>
 
           <Button
             mode="contained"
@@ -251,6 +263,9 @@ const styles = StyleSheet.create({
   inner: { padding: 16, paddingBottom: 120 },
   label: { opacity: 0.65, marginBottom: 6 },
   section: { marginTop: 16, marginBottom: 8, fontWeight: '600' },
+  // First section heading inside the form card — no top margin since the card padding handles it
+  sectionFirst: { marginBottom: 8, fontWeight: '600' },
+  formCard: { marginTop: 8, marginBottom: 8, backgroundColor: '#fff' },
   input: { marginBottom: 6 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
@@ -262,14 +277,6 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_TINT,
     alignItems: 'center', justifyContent: 'center',
   },
-
-  homeChip: {
-    paddingHorizontal: 12, paddingVertical: 10, borderRadius: 8,
-    backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: 'transparent',
-  },
-  homeChipActive: { backgroundColor: PRIMARY_TINT, borderColor: PRIMARY },
-  homeChipText: { color: '#1f2937' },
-  homeChipTextActive: { color: PRIMARY, fontWeight: '600' },
 
   purposeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   purposeChip: {
