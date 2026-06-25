@@ -88,6 +88,14 @@ export default function AnnouncementsListScreen() {
                       <Text style={styles.pinText}>📌 Pinned</Text>
                     </View>
                   ) : null}
+                  {item.organization?.legal_name ? (
+                    <View style={styles.jmbBadge}>
+                      <Icon source="city-variant-outline" size={11} color="#6b7280" />
+                      <Text style={styles.jmbBadgeText} numberOfLines={1}>
+                        {item.organization.legal_name}
+                      </Text>
+                    </View>
+                  ) : null}
                   <Text variant="titleMedium" style={styles.title}>{item.title}</Text>
                 </View>
                 <Text variant="bodySmall" style={styles.meta}>
@@ -124,6 +132,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: PRIMARY_TINT,
   },
   pinText: { fontSize: 11, fontWeight: '700', color: PRIMARY },
+  jmbBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 999, backgroundColor: '#f3f4f6',
+    maxWidth: '70%',
+  },
+  jmbBadgeText: { fontSize: 11, color: '#374151', fontWeight: '500' },
   meta: { opacity: 0.55, marginTop: 4 },
   bodyPreview: { marginTop: 8, opacity: 0.85, lineHeight: 20 },
   photoStrip: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },

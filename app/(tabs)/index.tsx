@@ -36,6 +36,7 @@ type AnnouncementPreview = {
   body: string;
   pinned: boolean;
   published_at: string;
+  organization?: { id: string | null; legal_name: string | null } | null;
 };
 
 type ServiceItem = {
@@ -328,9 +329,19 @@ export default function HomeScreen() {
                 <Text variant="bodySmall" style={styles.announcementBody} numberOfLines={2}>
                   {a.body}
                 </Text>
-                <Text variant="bodySmall" style={styles.announcementMeta}>
-                  {new Date(a.published_at).toLocaleString()}
-                </Text>
+                <View style={styles.announcementMetaRow}>
+                  {a.organization?.legal_name ? (
+                    <View style={styles.jmbBadge}>
+                      <Icon source="city-variant-outline" size={11} color="#6b7280" />
+                      <Text style={styles.jmbBadgeText} numberOfLines={1}>
+                        {a.organization.legal_name}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <Text variant="bodySmall" style={styles.announcementMeta}>
+                    {new Date(a.published_at).toLocaleString()}
+                  </Text>
+                </View>
               </Card.Content>
             </Card>
           ))
@@ -446,6 +457,17 @@ const styles = StyleSheet.create({
 
   // Latest announcements section
   announcementCard: { marginBottom: 8 },
+  announcementMetaRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: 8, flexWrap: 'wrap',
+  },
+  jmbBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 999, backgroundColor: '#f3f4f6',
+    maxWidth: '70%',
+  },
+  jmbBadgeText: { fontSize: 11, color: '#374151', fontWeight: '500' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pinPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999, backgroundColor: PRIMARY_TINT },
   pinText: { fontSize: 11, fontWeight: '700', color: PRIMARY },

@@ -6,7 +6,6 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Button, Card, HelperText, Icon, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 
 import { PurpleHeader } from '@/components/purple-header';
-import { UnitSwitcherModal } from '@/components/unit-switcher-modal';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
 import { formatMyIc, normaliseMyPhone } from '@/lib/format';
@@ -35,12 +34,10 @@ export default function NewVisitorScreen() {
   const router = useRouter();
   const { user } = useAuth();
 
-  // The bound home for this visitor pass. Initialised from the same
-  // AsyncStorage key the Home tab writes to, so whatever home the resident
-  // last chose there is the default here. A "Change" link opens the same
-  // UnitSwitcherModal used on Home for multi-home owners.
+  // Bound home for this pass — read-only. Sourced from the Home tab's
+  // active-home AsyncStorage key. To file for a different home, the user
+  // switches on the Home tab and comes back.
   const [unitId, setUnitId] = useState<string>(user?.units?.[0]?.id ?? '');
-  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
@@ -51,11 +48,6 @@ export default function NewVisitorScreen() {
       }
     });
   }, [user?.units]);
-
-  function handleSwitchUnit(nextUnitId: string) {
-    setUnitId(nextUnitId);
-    AsyncStorage.setItem(SELECTED_UNIT_KEY, nextUnitId).catch(() => {});
-  }
 
   const [visitorName, setVisitorName] = useState('');
   const [visitorPhone, setVisitorPhone] = useState('');
@@ -182,10 +174,8 @@ export default function NewVisitorScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         showsVerticalScrollIndicator>
-        {/* Bound home for this pass — same UX whether the user has 1 or many.
-            For multi-home owners a "Change" link opens the same modal used on
-            the Home tab; the selection is shared via AsyncStorage so switching
-            here updates Home too. */}
+        {/* Bound home for this pass — read-only. To file for a different
+            home, switch on the Home tab and come back. */}
         {boundHome ? (
           <Card style={styles.contextCard}>
             <Card.Content style={styles.contextContent}>
@@ -200,12 +190,6 @@ export default function NewVisitorScreen() {
                   Unit {boundHome.unit_number}
                 </Text>
               </View>
-              {homes.length > 1 ? (
-                <Pressable onPress={() => setSwitcherOpen(true)} style={styles.changeBtn}>
-                  <Text style={styles.changeBtnText}>Change</Text>
-                  <Icon source="chevron-down" size={16} color={PRIMARY} />
-                </Pressable>
-              ) : null}
             </Card.Content>
           </Card>
         ) : null}
@@ -345,13 +329,6 @@ export default function NewVisitorScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
 
-      <UnitSwitcherModal
-        visible={switcherOpen}
-        units={homes}
-        selectedUnitId={unitId}
-        onDismiss={() => setSwitcherOpen(false)}
-        onSelect={handleSwitchUnit}
-      />
     </View>
   );
 }
@@ -375,11 +352,6 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_TINT,
     alignItems: 'center', justifyContent: 'center',
   },
-  changeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 2,
-    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6,
-  },
-  changeBtnText: { color: PRIMARY, fontSize: 13, fontWeight: '600' },
 
   purposeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   purposeChip: {

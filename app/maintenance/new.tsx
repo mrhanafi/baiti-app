@@ -17,7 +17,6 @@ import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-pa
 import { PhotoSourceSheet } from '@/components/photo-source-sheet';
 import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
-import { UnitSwitcherModal } from '@/components/unit-switcher-modal';
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { getToken } from '@/lib/auth/storage';
 import { useAuth } from '@/lib/auth/session';
@@ -44,11 +43,10 @@ export default function NewReportScreen() {
   const { user } = useAuth();
 
   const homes = user?.units ?? [];
-  // Bound home for this report — initialised from the shared AsyncStorage key
-  // the Home tab + Utilities + visitor/new all use. "Change" link reuses the
-  // same UnitSwitcherModal so the selection stays consistent across the app.
+  // Bound home for this report — read-only. Sourced from the Home tab's
+  // active-home AsyncStorage key. To file for a different home, switch
+  // on Home and come back.
   const [unitId, setUnitId] = useState<string>(homes[0]?.id ?? '');
-  const [switcherOpen, setSwitcherOpen] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
@@ -64,11 +62,6 @@ export default function NewReportScreen() {
     () => homes.find((h) => h.id === unitId) ?? homes[0] ?? null,
     [homes, unitId],
   );
-
-  function handleSwitchUnit(nextUnitId: string) {
-    setUnitId(nextUnitId);
-    AsyncStorage.setItem(SELECTED_UNIT_KEY, nextUnitId).catch(() => {});
-  }
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [location, setLocation] = useState('');
@@ -208,12 +201,6 @@ export default function NewReportScreen() {
                     Unit {boundHome.unit_number}
                   </Text>
                 </View>
-                {homes.length > 1 ? (
-                  <Pressable onPress={() => setSwitcherOpen(true)} style={styles.changeBtn}>
-                    <Text style={styles.changeBtnText}>Change</Text>
-                    <Icon source="chevron-down" size={16} color={PRIMARY} />
-                  </Pressable>
-                ) : null}
               </Card.Content>
             </Card>
           ) : null}
@@ -314,13 +301,6 @@ export default function NewReportScreen() {
         onPickFromLibrary={pickFromLibrary}
       />
 
-      <UnitSwitcherModal
-        visible={switcherOpen}
-        units={homes}
-        selectedUnitId={unitId}
-        onDismiss={() => setSwitcherOpen(false)}
-        onSelect={handleSwitchUnit}
-      />
     </View>
   );
 }
@@ -336,11 +316,6 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: PRIMARY_TINT,
     alignItems: 'center', justifyContent: 'center',
   },
-  changeBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 2,
-    paddingHorizontal: 8, paddingVertical: 6, borderRadius: 6,
-  },
-  changeBtnText: { color: PRIMARY, fontSize: 13, fontWeight: '600' },
 
   section: { marginTop: 16, marginBottom: 8, fontWeight: '600' },
   input: { marginBottom: 8 },

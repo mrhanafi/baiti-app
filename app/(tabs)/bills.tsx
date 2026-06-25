@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,8 +8,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
 import { apiFetch } from '@/lib/api/client';
+import { useAuth } from '@/lib/auth/session';
 
 const PRIMARY = '#7367F0';
+// Shared with Home tab + Utilities + visitor/new + maintenance/new.
+const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 type Invoice = {
   id: string;
@@ -20,6 +24,7 @@ type Invoice = {
   due_date: string;
   paid_at: string | null;
   days_overdue: number;
+  unit_id: string | null;
   unit_number: string | null;
   jmb_name: string | null;
 };
@@ -27,9 +32,33 @@ type Invoice = {
 export default function BillsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Active home read from the shared AsyncStorage key. Bills defaults to
+  // showing only this home's invoices — flip the toggle for the cross-home
+  // aggregate view (multi-home owners only).
+  const [activeUnitId, setActiveUnitId] = useState<string | null>(null);
+  const [showAllHomes, setShowAllHomes] = useState(false);
+  const homes = user?.units ?? [];
+  const hasMultipleHomes = homes.length > 1;
+
+  useEffect(() => {
+    AsyncStorage.getItem(SELECTED_UNIT_KEY).then((saved) => {
+      if (saved && homes.some((u) => u.id === saved)) {
+        setActiveUnitId(saved);
+      } else if (homes[0]?.id) {
+        setActiveUnitId(homes[0].id);
+      }
+    });
+  }, [homes]);
+
+  const activeHome = useMemo(
+    () => homes.find((h) => h.id === activeUnitId) ?? homes[0] ?? null,
+    [homes, activeUnitId],
+  );
 
   const load = useCallback(async () => {
     try {
@@ -49,8 +78,13 @@ export default function BillsScreen() {
     setRefreshing(false);
   }
 
-  const outstanding = invoices.filter((i) => i.status === 'issued' || i.status === 'overdue');
-  const history = invoices.filter((i) => i.status === 'paid' || i.status === 'cancelled');
+  const scopedInvoices = useMemo(() => {
+    if (showAllHomes || !activeUnitId) return invoices;
+    return invoices.filter((i) => i.unit_id === activeUnitId);
+  }, [invoices, activeUnitId, showAllHomes]);
+
+  const outstanding = scopedInvoices.filter((i) => i.status === 'issued' || i.status === 'overdue');
+  const history = scopedInvoices.filter((i) => i.status === 'paid' || i.status === 'cancelled');
   const totalOutstanding = outstanding.reduce((sum, i) => sum + i.total, 0);
 
   return (
@@ -61,13 +95,31 @@ export default function BillsScreen() {
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
         <TabletContainer>
+          {/* Active-home scope chip — shown only for multi-home owners.
+              Tap to toggle between active-home only and the all-homes view. */}
+          {hasMultipleHomes ? (
+            <Pressable onPress={() => setShowAllHomes((v) => !v)} style={styles.scopeChip}>
+              <Icon source={showAllHomes ? 'home-group' : 'home-city'} size={16} color={PRIMARY} />
+              <Text style={styles.scopeChipText}>
+                {showAllHomes
+                  ? `All ${homes.length} homes`
+                  : `Unit ${activeHome?.unit_number ?? '—'}${activeHome?.property_name ? ` · ${activeHome.property_name}` : ''}`}
+              </Text>
+              <Text style={styles.scopeChipAction}>
+                {showAllHomes ? 'Show one' : 'Show all'}
+              </Text>
+            </Pressable>
+          ) : null}
+
           {loading && !refreshing ? (
             <View style={styles.center}><ActivityIndicator /></View>
-          ) : invoices.length === 0 ? (
+          ) : scopedInvoices.length === 0 ? (
             <View style={styles.center}>
               <Icon source="receipt-text-outline" size={56} color="#9ca3af" />
               <Text variant="bodyMedium" style={styles.emptyText}>
-                No invoices yet.{'\n'}When your JMB issues one, it'll show up here.
+                {invoices.length === 0
+                  ? `No invoices yet.\nWhen your JMB issues one, it'll show up here.`
+                  : `No bills for this home yet.${hasMultipleHomes ? '\nTap the chip above to see all homes.' : ''}`}
               </Text>
             </View>
           ) : (
@@ -208,4 +260,15 @@ const styles = StyleSheet.create({
   historyEmptyCard: { backgroundColor: '#fff' },
   historyEmptyContent: { alignItems: 'center', paddingVertical: 24 },
   historyEmptyText: { marginTop: 8, opacity: 0.65, textAlign: 'center' },
+
+  scopeChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#fff',
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 999,
+    marginBottom: 12,
+    borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  scopeChipText: { flex: 1, color: '#1f2937', fontSize: 13, fontWeight: '500' },
+  scopeChipAction: { color: PRIMARY, fontSize: 12, fontWeight: '600' },
 });
