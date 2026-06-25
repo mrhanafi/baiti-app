@@ -188,89 +188,93 @@ export default function NewVisitorScreen() {
           </Card>
         )}
 
-        <Text variant="titleSmall" style={styles.section}>Visitor</Text>
+        <Card style={styles.formCard}>
+          <Card.Content>
+            <Text variant="titleSmall" style={styles.sectionFirst}>Visitor</Text>
 
-        <TextInput
-          label="Visitor name *"
-          value={visitorName}
-          onChangeText={setVisitorName}
-          mode="outlined"
-          style={styles.input}
-          error={!!fieldError('visitor_name')}
-        />
-        {fieldError('visitor_name') ? <HelperText type="error" visible>{fieldError('visitor_name')}</HelperText> : null}
+            <TextInput
+              label="Visitor name *"
+              value={visitorName}
+              onChangeText={setVisitorName}
+              mode="outlined"
+              style={styles.input}
+              error={!!fieldError('visitor_name')}
+            />
+            {fieldError('visitor_name') ? <HelperText type="error" visible>{fieldError('visitor_name')}</HelperText> : null}
 
-        <TextInput
-          label="Phone"
-          value={visitorPhone}
-          onChangeText={(v) => setVisitorPhone(v.replace(/\D/g, ''))}
-          keyboardType="phone-pad"
-          mode="outlined"
-          style={styles.input}
-          placeholder="121234567"
-          left={<TextInput.Affix text="+60" />}
-        />
+            <TextInput
+              label="Phone"
+              value={visitorPhone}
+              onChangeText={(v) => setVisitorPhone(v.replace(/\D/g, ''))}
+              keyboardType="phone-pad"
+              mode="outlined"
+              style={styles.input}
+              placeholder="121234567"
+              left={<TextInput.Affix text="+60" />}
+            />
 
-        <TextInput
-          label="IC (optional)"
-          value={visitorIc}
-          onChangeText={(v) => setVisitorIc(formatMyIc(v))}
-          keyboardType="number-pad"
-          maxLength={14}
-          mode="outlined"
-          style={styles.input}
-          placeholder="901231-14-5678"
-        />
+            <TextInput
+              label="IC (optional)"
+              value={visitorIc}
+              onChangeText={(v) => setVisitorIc(formatMyIc(v))}
+              keyboardType="number-pad"
+              maxLength={14}
+              mode="outlined"
+              style={styles.input}
+              placeholder="901231-14-5678"
+            />
 
-        <Text variant="titleSmall" style={styles.section}>Purpose</Text>
-        <View style={styles.purposeGrid}>
-          {PURPOSES.map((p) => (
-            <Pressable
-              key={p.value}
-              onPress={() => setPurpose(p.value)}
-              style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
-              <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
-                {p.label}
+            <Text variant="titleSmall" style={styles.section}>Purpose</Text>
+            <View style={styles.purposeGrid}>
+              {PURPOSES.map((p) => (
+                <Pressable
+                  key={p.value}
+                  onPress={() => setPurpose(p.value)}
+                  style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
+                  <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
+                    {p.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Text variant="titleSmall" style={styles.section}>Vehicle</Text>
+            <TextInput
+              label="Plate number (optional)"
+              value={vehiclePlate}
+              onChangeText={(t) => setVehiclePlate(t.toUpperCase())}
+              autoCapitalize="characters"
+              mode="outlined"
+              style={styles.input}
+              placeholder="PJW1234"
+            />
+
+            <Text variant="titleSmall" style={styles.section}>When</Text>
+            <SegmentedButtons
+              value={preset}
+              onValueChange={(v) => setPreset(v as typeof preset)}
+              buttons={PRESETS.map((p) => ({ value: p.key, label: p.label }))}
+              style={{ marginBottom: 12 }}
+            />
+
+            {preset === 'custom' ? (
+              <View style={styles.customRow}>
+                <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
+                  <Text variant="labelSmall" style={styles.label}>From</Text>
+                  <Text>{validFrom.toLocaleDateString()}</Text>
+                </Pressable>
+                <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
+                  <Text variant="labelSmall" style={styles.label}>Until</Text>
+                  <Text>{validUntil.toLocaleDateString()}</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Text variant="bodySmall" style={styles.windowSummary}>
+                {effectiveFrom.toLocaleString()} → {effectiveUntil.toLocaleString()}
               </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Text variant="titleSmall" style={styles.section}>Vehicle</Text>
-        <TextInput
-          label="Plate number (optional)"
-          value={vehiclePlate}
-          onChangeText={(t) => setVehiclePlate(t.toUpperCase())}
-          autoCapitalize="characters"
-          mode="outlined"
-          style={styles.input}
-          placeholder="PJW1234"
-        />
-
-        <Text variant="titleSmall" style={styles.section}>When</Text>
-        <SegmentedButtons
-          value={preset}
-          onValueChange={(v) => setPreset(v as typeof preset)}
-          buttons={PRESETS.map((p) => ({ value: p.key, label: p.label }))}
-          style={{ marginBottom: 12 }}
-        />
-
-        {preset === 'custom' ? (
-          <View style={styles.customRow}>
-            <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
-              <Text variant="labelSmall" style={styles.label}>From</Text>
-              <Text>{validFrom.toLocaleDateString()}</Text>
-            </Pressable>
-            <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
-              <Text variant="labelSmall" style={styles.label}>Until</Text>
-              <Text>{validUntil.toLocaleDateString()}</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Text variant="bodySmall" style={styles.windowSummary}>
-            {effectiveFrom.toLocaleString()} → {effectiveUntil.toLocaleString()}
-          </Text>
-        )}
+            )}
+          </Card.Content>
+        </Card>
 
         {/* mode="datetime" only works on iOS — Android crashes. Stick to
             date-only and default the time-of-day (start-of-day for "from",
@@ -327,6 +331,9 @@ const styles = StyleSheet.create({
   inner: { padding: 16, paddingBottom: 120 },
   label: { opacity: 0.65, marginBottom: 6 },
   section: { marginTop: 16, marginBottom: 8, fontWeight: '600' },
+  // First section heading inside the form card — no top margin since the card padding handles it
+  sectionFirst: { marginBottom: 8, fontWeight: '600' },
+  formCard: { marginTop: 8, marginBottom: 8, backgroundColor: '#fff' },
   input: { marginBottom: 6 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
