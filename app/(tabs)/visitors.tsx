@@ -1,11 +1,12 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, FAB, Icon, Text } from 'react-native-paper';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Card, Chip, FAB, Icon, Menu, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiFetch } from '@/lib/api/client';
+import { FAB_SIZE, sosFabBottom } from '@/lib/layout';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
@@ -205,34 +206,44 @@ export default function VisitorsScreen() {
         />
       )}
 
-      {/* Stack the visitor FAB just above the SOS FAB on the right rail.
-          SOS sits at (TAB_BAR + insets.bottom + 16); place the visitor FAB's
-          bottom 4px above the SOS top edge (SOS height ≈ 56) for a tight,
-          paired look. Keep TAB_BAR_HEIGHT in sync with sos-button.tsx. */}
-      <FAB.Group
-        open={fabOpen}
-        visible
-        icon={fabOpen ? 'close' : 'plus'}
-        actions={[
-          {
-            icon: 'account-plus',
-            label: 'New visitor',
-            onPress: () => router.push('/visitor/new'),
-          },
-          {
-            icon: 'party-popper',
-            label: 'New event (invite link)',
-            onPress: () => router.push('/event/new'),
-          },
-        ]}
-        onStateChange={({ open }) => setFabOpen(open)}
-        fabStyle={{ backgroundColor: PRIMARY }}
-        color="#fff"
-        style={{
-          paddingBottom:
-            (Platform.OS === 'ios' ? 49 : 56) + insets.bottom + 16 + 56 + 4,
-        }}
-      />
+      {/* Plain FAB stacked directly above the SOS FAB on the right rail.
+          Both buttons read the same anchor (sosFabBottom) so they line up
+          identically across phone + tablet. Tapping the plus opens a small
+          Paper Menu anchored to the FAB with the two create actions. */}
+      <Menu
+        visible={fabOpen}
+        onDismiss={() => setFabOpen(false)}
+        anchor={
+          <FAB
+            icon={fabOpen ? 'close' : 'plus'}
+            onPress={() => setFabOpen((v) => !v)}
+            color="#fff"
+            style={{
+              position: 'absolute',
+              right: 16,
+              bottom: sosFabBottom(insets) + FAB_SIZE + 8,
+              backgroundColor: PRIMARY,
+            }}
+          />
+        }
+        anchorPosition="top">
+        <Menu.Item
+          leadingIcon="account-plus"
+          onPress={() => {
+            setFabOpen(false);
+            router.push('/visitor/new');
+          }}
+          title="New visitor"
+        />
+        <Menu.Item
+          leadingIcon="party-popper"
+          onPress={() => {
+            setFabOpen(false);
+            router.push('/event/new');
+          }}
+          title="New event (invite link)"
+        />
+      </Menu>
     </View>
   );
 }

@@ -4,7 +4,6 @@ import {
   Animated,
   Easing,
   Modal,
-  Platform,
   Pressable,
   StyleSheet,
   View,
@@ -14,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
+import { sosFabBottom } from '@/lib/layout';
 
 const HOLD_MS = 3000;
 const POLL_MS = 10000;
@@ -44,8 +44,7 @@ const CATEGORIES: { value: SosCategory; label: string; icon: string }[] = [
 export function SosButton() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const TAB_BAR_HEIGHT = Platform.OS === 'ios' ? 49 : 56;
-  const bottomOffset = TAB_BAR_HEIGHT + insets.bottom + 16;
+  const bottomOffset = sosFabBottom(insets);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [activeEvent, setActiveEvent] = useState<SosEvent | null>(null);
