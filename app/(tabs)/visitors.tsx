@@ -205,10 +205,10 @@ export default function VisitorsScreen() {
         />
       )}
 
-      {/* Stack the visitor FAB cleanly above the SOS FAB. SOS sits at
-          (TAB_BAR + insets.bottom + 16) with a 56px diameter; place the
-          visitor FAB above it with a 12px gap so they share the right rail
-          without overlapping. Keep TAB_BAR_HEIGHT in sync with sos-button.tsx. */}
+      {/* Stack the visitor FAB just above the SOS FAB on the right rail.
+          SOS sits at (TAB_BAR + insets.bottom + 16); place the visitor FAB's
+          bottom 4px above the SOS top edge (SOS height ≈ 56) for a tight,
+          paired look. Keep TAB_BAR_HEIGHT in sync with sos-button.tsx. */}
       <FAB.Group
         open={fabOpen}
         visible
@@ -230,7 +230,7 @@ export default function VisitorsScreen() {
         color="#fff"
         style={{
           paddingBottom:
-            (Platform.OS === 'ios' ? 49 : 56) + insets.bottom + 16 + 56 + 12,
+            (Platform.OS === 'ios' ? 49 : 56) + insets.bottom + 16 + 56 + 4,
         }}
       />
     </View>
