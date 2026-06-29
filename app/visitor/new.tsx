@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   section: { marginTop: 16, marginBottom: 8, fontWeight: '600' },
   // First section heading inside the form card — no top margin since the card padding handles it
   sectionFirst: { marginBottom: 8, fontWeight: '600' },
-  formCard: { marginTop: 8, marginBottom: 8, backgroundColor: '#fff' },
+  formCard: { marginTop: 8, marginBottom: 8 },
   input: { marginBottom: 6 },
 
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
