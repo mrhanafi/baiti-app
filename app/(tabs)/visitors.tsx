@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
+import { FlatList, Platform, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Chip, FAB, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -205,6 +205,10 @@ export default function VisitorsScreen() {
         />
       )}
 
+      {/* Stack the visitor FAB cleanly above the SOS FAB. SOS sits at
+          (TAB_BAR + insets.bottom + 16) with a 56px diameter; place the
+          visitor FAB above it with a 12px gap so they share the right rail
+          without overlapping. Keep TAB_BAR_HEIGHT in sync with sos-button.tsx. */}
       <FAB.Group
         open={fabOpen}
         visible
@@ -224,7 +228,10 @@ export default function VisitorsScreen() {
         onStateChange={({ open }) => setFabOpen(open)}
         fabStyle={{ backgroundColor: PRIMARY }}
         color="#fff"
-        style={{ paddingBottom: insets.bottom + 80 }}
+        style={{
+          paddingBottom:
+            (Platform.OS === 'ios' ? 49 : 56) + insets.bottom + 16 + 56 + 12,
+        }}
       />
     </View>
   );
