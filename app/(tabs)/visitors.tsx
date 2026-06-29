@@ -2,11 +2,10 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, FAB, Icon, Menu, Text } from 'react-native-paper';
+import { ActivityIndicator, Card, Chip, Icon, IconButton, Menu, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiFetch } from '@/lib/api/client';
-import { FAB_SIZE, sosFabBottom } from '@/lib/layout';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
@@ -94,9 +93,44 @@ export default function VisitorsScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Purple header band */}
+      {/* Purple header band — title on the left, create-menu in the
+          top-right (Twitter/Telegram pattern). Keeps the bottom-right rail
+          clear for SOS. */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <Text style={styles.title}>Visitors</Text>
+        <View style={styles.headerTopRow}>
+          <Text style={styles.title}>Visitors</Text>
+          <Menu
+            visible={fabOpen}
+            onDismiss={() => setFabOpen(false)}
+            anchor={
+              <IconButton
+                icon="plus"
+                iconColor="#fff"
+                size={24}
+                containerColor="rgba(255,255,255,0.18)"
+                onPress={() => setFabOpen(true)}
+                accessibilityLabel="Create"
+              />
+            }
+            anchorPosition="bottom">
+            <Menu.Item
+              leadingIcon="account-plus"
+              onPress={() => {
+                setFabOpen(false);
+                router.push('/visitor/new');
+              }}
+              title="New visitor"
+            />
+            <Menu.Item
+              leadingIcon="party-popper"
+              onPress={() => {
+                setFabOpen(false);
+                router.push('/event/new');
+              }}
+              title="New event (invite link)"
+            />
+          </Menu>
+        </View>
         <View style={styles.chips}>
           {(['today', 'upcoming', 'past'] as Filter[]).map((f) => (
             <Chip
@@ -206,44 +240,6 @@ export default function VisitorsScreen() {
         />
       )}
 
-      {/* Plain FAB stacked directly above the SOS FAB on the right rail.
-          Both buttons read the same anchor (sosFabBottom) so they line up
-          identically across phone + tablet. Tapping the plus opens a small
-          Paper Menu anchored to the FAB with the two create actions. */}
-      <Menu
-        visible={fabOpen}
-        onDismiss={() => setFabOpen(false)}
-        anchor={
-          <FAB
-            icon={fabOpen ? 'close' : 'plus'}
-            onPress={() => setFabOpen((v) => !v)}
-            color="#fff"
-            style={{
-              position: 'absolute',
-              right: 16,
-              bottom: sosFabBottom(insets) + FAB_SIZE + 8,
-              backgroundColor: PRIMARY,
-            }}
-          />
-        }
-        anchorPosition="top">
-        <Menu.Item
-          leadingIcon="account-plus"
-          onPress={() => {
-            setFabOpen(false);
-            router.push('/visitor/new');
-          }}
-          title="New visitor"
-        />
-        <Menu.Item
-          leadingIcon="party-popper"
-          onPress={() => {
-            setFabOpen(false);
-            router.push('/event/new');
-          }}
-          title="New event (invite link)"
-        />
-      </Menu>
     </View>
   );
 }
@@ -271,7 +267,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
-  title: { color: '#fff', fontSize: 22, fontWeight: '600', marginBottom: 12 },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  title: { color: '#fff', fontSize: 22, fontWeight: '600' },
   chips: { flexDirection: 'row', gap: 8 },
   chip: { backgroundColor: 'rgba(255,255,255,0.18)' },
   chipActive: { backgroundColor: '#fff' },
@@ -282,7 +284,7 @@ const styles = StyleSheet.create({
   emptyText: { marginTop: 12, opacity: 0.7, textAlign: 'center' },
   emptyHint: { marginTop: 4, opacity: 0.5, textAlign: 'center' },
 
-  list: { padding: 16, paddingBottom: 160 },
+  list: { padding: 16, paddingBottom: 120 },
   passCard: { marginBottom: 12 },
   passContent: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   passIcon: {
