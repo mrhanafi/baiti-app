@@ -93,12 +93,29 @@ export default function VisitorsScreen() {
     <View style={styles.container}>
       <StatusBar style="light" />
 
-      {/* Purple header band — title on the left, create-menu in the
-          top-right (Twitter/Telegram pattern). Keeps the bottom-right rail
-          clear for SOS. */}
+      {/* Purple header band — title + filter chips on the left, create
+          menu on the right. Outer row centres the "+" against the full
+          height of the title-and-chips column so it doesn't look
+          top-anchored to the title alone. */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-        <View style={styles.headerTopRow}>
-          <Text style={styles.title}>Visitors</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.title}>Visitors</Text>
+            <View style={styles.chips}>
+              {(['today', 'upcoming', 'past'] as Filter[]).map((f) => (
+                <Chip
+                  key={f}
+                  selected={filter === f}
+                  onPress={() => setFilter(f)}
+                  style={[styles.chip, filter === f && styles.chipActive]}
+                  textStyle={filter === f ? styles.chipTextActive : styles.chipText}
+                  compact>
+                  {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'Past'}
+                </Chip>
+              ))}
+            </View>
+          </View>
+
           <Menu
             visible={fabOpen}
             onDismiss={() => setFabOpen(false)}
@@ -130,19 +147,6 @@ export default function VisitorsScreen() {
               title="New event (invite link)"
             />
           </Menu>
-        </View>
-        <View style={styles.chips}>
-          {(['today', 'upcoming', 'past'] as Filter[]).map((f) => (
-            <Chip
-              key={f}
-              selected={filter === f}
-              onPress={() => setFilter(f)}
-              style={[styles.chip, filter === f && styles.chipActive]}
-              textStyle={filter === f ? styles.chipTextActive : styles.chipText}
-              compact>
-              {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'Past'}
-            </Chip>
-          ))}
         </View>
       </View>
 
@@ -267,13 +271,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 16,
   },
-  headerTopRow: {
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    gap: 12,
   },
-  title: { color: '#fff', fontSize: 22, fontWeight: '600' },
+  headerLeft: { flex: 1 },
+  title: { color: '#fff', fontSize: 22, fontWeight: '600', marginBottom: 12 },
   chips: { flexDirection: 'row', gap: 8 },
   chip: { backgroundColor: 'rgba(255,255,255,0.18)' },
   chipActive: { backgroundColor: '#fff' },
