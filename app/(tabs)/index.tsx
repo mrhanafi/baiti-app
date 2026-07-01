@@ -3,7 +3,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Icon, IconButton, Text } from 'react-native-paper';
+import { Button, Card, Icon, IconButton, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TabletContainer } from '@/components/tablet-container';
@@ -56,6 +56,7 @@ export default function HomeScreen() {
   const { user, refreshUser } = useAuth();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   // Selected unit — persists across launches. Falls back to first unit if
@@ -142,7 +143,7 @@ export default function HomeScreen() {
   // Show a focused "register your property" empty state instead of the dashboard.
   if (!hasActiveOrg && !pendingOrg) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <StatusBar style="light" />
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
@@ -173,7 +174,7 @@ export default function HomeScreen() {
   // Pending approval state: claim submitted, waiting on JMB admin.
   if (!hasActiveOrg && pendingOrg) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <StatusBar style="light" />
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
           <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
@@ -211,7 +212,7 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* White status bar icons on the purple header band */}
       <StatusBar style="light" />
 
@@ -223,7 +224,9 @@ export default function HomeScreen() {
         </View>
 
         {/* Property selection pill — tap to switch when user has multiple homes */}
-        <Pressable onPress={handlePropertyPress} style={styles.propertyCard}>
+        <Pressable
+          onPress={handlePropertyPress}
+          style={[styles.propertyCard, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.propertyIcon}>
             <Icon source="home-city" size={24} color={PRIMARY} />
           </View>
@@ -331,9 +334,15 @@ export default function HomeScreen() {
                 </Text>
                 <View style={styles.announcementMetaRow}>
                   {a.organization?.legal_name ? (
-                    <View style={styles.jmbBadge}>
-                      <Icon source="city-variant-outline" size={11} color="#6b7280" />
-                      <Text style={styles.jmbBadgeText} numberOfLines={1}>
+                    <View
+                      style={[
+                        styles.jmbBadge,
+                        { backgroundColor: theme.colors.surfaceVariant },
+                      ]}>
+                      <Icon source="city-variant-outline" size={11} color={theme.colors.onSurfaceVariant} />
+                      <Text
+                        style={[styles.jmbBadgeText, { color: theme.colors.onSurfaceVariant }]}
+                        numberOfLines={1}>
                         {a.organization.legal_name}
                       </Text>
                     </View>
@@ -405,11 +414,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // White property pill sitting inside the header
+  // Property pill sitting inside the purple header. Surface colour comes
+  // from theme (theme.colors.surface) so it adapts to dark mode.
   propertyCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     borderRadius: 12,
     padding: 12,
     gap: 12,
@@ -464,10 +473,10 @@ const styles = StyleSheet.create({
   jmbBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 999, backgroundColor: '#f3f4f6',
+    borderRadius: 999,
     maxWidth: '70%',
   },
-  jmbBadgeText: { fontSize: 11, color: '#374151', fontWeight: '500' },
+  jmbBadgeText: { fontSize: 11, fontWeight: '500' },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   pinPill: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 999, backgroundColor: PRIMARY_TINT },
   pinText: { fontSize: 11, fontWeight: '700', color: PRIMARY },

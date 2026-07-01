@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Card, Chip, Icon, IconButton, Menu, Text } from 'react-native-paper';
+import { ActivityIndicator, Card, Chip, Icon, IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { apiFetch } from '@/lib/api/client';
@@ -51,6 +51,7 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
 export default function VisitorsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const theme = useTheme();
   const [filter, setFilter] = useState<Filter>('today');
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,7 +91,7 @@ export default function VisitorsScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <StatusBar style="light" />
 
       {/* Purple header band — title + filter chips on the left, create
