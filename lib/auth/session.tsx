@@ -1,4 +1,6 @@
+import * as Device from 'expo-device';
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 import { apiFetch } from '@/lib/api/client';
 import {
@@ -258,17 +260,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   // Fetch an Expo push token and POST it to the given endpoint. Silent on
-  // failure — push is best-effort, never block the user.
+  // failure — push is best-effort, never block the user. Sends device info
+  // so the backend can show "iPhone 15 · last seen 2d ago" per device.
   async function registerPushToken(endpoint: string) {
     try {
       const token = await getExpoPushToken();
       if (!token) return;
       await apiFetch(endpoint, {
         method: 'POST',
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({
+          token,
+          device_name: Device.deviceName ?? Device.modelName ?? null,
+          platform: Platform.OS,
+        }),
       });
     } catch {
       // ignore
+    }
+  }
+
+  // On logout, remove THIS device's token so it stops receiving pushes for
+  // this account. Other devices stay registered.
+  async function deregisterPushToken() {
+    try {
+      const token = await getExpoPushToken();
+      if (!token) return;
+      await apiFetch('/api/v1/me/push-token', {
+        method: 'DELETE',
+        body: JSON.stringify({ token }),
+      });
+    } catch {
+      // ignore — best effort
     }
   }
 
@@ -280,6 +302,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     console.log('[auth] signOut start');
+    // Deregister this device's push token BEFORE the auth token is cleared —
+    // the DELETE call needs to be authenticated.
+    await deregisterPushToken();
     try {
       await apiFetch('/api/v1/auth/logout', { method: 'POST' });
     } catch (err) {
