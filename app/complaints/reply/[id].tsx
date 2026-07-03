@@ -82,7 +82,7 @@ export default function ReplyScreen() {
       });
 
       const token = await getToken();
-      const res = await fetch(`${BASE_URL}/api/v1/me/maintenance-reports/${id}/reply`, {
+      const res = await fetch(`${BASE_URL}/api/v1/me/complaints/${id}/reply`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',

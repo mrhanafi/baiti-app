@@ -37,7 +37,7 @@ export function PushListeners({ children }: { children: ReactNode }) {
       } else if (kind === 'announcement.published' && data?.announcement_id) {
         router.push({ pathname: '/announcements/[id]', params: { id: data.announcement_id } });
       } else if (kind === 'maintenance.update' && data?.report_id) {
-        router.push({ pathname: '/maintenance/[id]', params: { id: data.report_id } });
+        router.push({ pathname: '/complaints/[id]', params: { id: data.report_id } });
       } else if (kind === 'facility.booking.update' || kind === 'facility.booking.pending') {
         router.push('/facility/bookings');
       }

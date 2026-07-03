@@ -17,8 +17,9 @@ type ReportSummary = {
   id: string;
   title: string;
   location: string;
-  category: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  category: string | null;
+  visibility: 'public' | 'private';
+  status: 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed';
   created_at: string;
   photo_count: number;
 };
@@ -26,11 +27,12 @@ type ReportSummary = {
 const STATUS_COLOR: Record<string, { bg: string; fg: string; label: string }> = {
   open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
   in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
+  escalated: { bg: '#EEEDFD', fg: '#7367F0', label: 'Escalated' },
   resolved: { bg: '#dcfce7', fg: '#15803d', label: 'Resolved' },
   closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
 };
 
-export default function MaintenanceListScreen() {
+export default function ComplaintListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isTablet, contentMaxWidth } = useResponsive();
@@ -43,7 +45,7 @@ export default function MaintenanceListScreen() {
     setLoading(true);
     try {
       const query = f === 'active' ? '?status=active' : '';
-      const data = await apiFetch(`/api/v1/me/maintenance-reports${query}`);
+      const data = await apiFetch(`/api/v1/me/complaints${query}`);
       setItems(data.reports ?? []);
     } catch {
       setItems([]);
@@ -61,7 +63,7 @@ export default function MaintenanceListScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Maintenance Reports" />
+      <PurpleHeader title="My Complaints" />
       <View style={styles.chipsRow}>
         {(['active', 'all'] as Filter[]).map((f) => (
           <Chip
@@ -82,10 +84,10 @@ export default function MaintenanceListScreen() {
         <View style={styles.center}>
           <Icon source="tools" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-            {filter === 'active' ? 'No active reports.' : 'No reports yet.'}
+            {filter === 'active' ? 'No active complaints.' : 'No complaints yet.'}
           </Text>
           <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.5 }}>
-            Tap + to file a new report.
+            Tap + to file a new complaint.
           </Text>
         </View>
       ) : (
@@ -102,7 +104,7 @@ export default function MaintenanceListScreen() {
             return (
               <Card
                 style={styles.card}
-                onPress={() => router.push({ pathname: '/maintenance/[id]', params: { id: item.id } })}>
+                onPress={() => router.push({ pathname: '/complaints/[id]', params: { id: item.id } })}>
                 <Card.Content>
                   <View style={styles.titleRow}>
                     <Text variant="titleMedium" style={styles.title}>{item.title}</Text>
@@ -111,7 +113,7 @@ export default function MaintenanceListScreen() {
                     </View>
                   </View>
                   <Text variant="bodySmall" style={styles.meta}>
-                    {item.location} · {prettyCategory(item.category)}
+                    {item.location}{item.category ? ` · ${item.category}` : ''}
                   </Text>
                   <Text variant="bodySmall" style={styles.meta}>
                     Filed {new Date(item.created_at).toLocaleDateString()} ·{' '}
@@ -126,17 +128,13 @@ export default function MaintenanceListScreen() {
 
       <FAB
         icon="plus"
-        label="New report"
-        onPress={() => router.push('/maintenance/new')}
+        label="New complaint"
+        onPress={() => router.push('/complaints/new')}
         style={[styles.fab, { bottom: insets.bottom + 32 }]}
         color="#fff"
       />
     </View>
   );
-}
-
-function prettyCategory(c: string): string {
-  return c.split('_').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
 }
 
 const styles = StyleSheet.create({

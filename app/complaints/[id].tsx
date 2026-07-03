@@ -31,7 +31,7 @@ type Photo = { id: string; url: string };
 type Update = {
   id: string;
   text: string | null;
-  status_changed_to: 'open' | 'in_progress' | 'resolved' | 'closed' | null;
+  status_changed_to: string | null;
   created_at: string;
   author: { id: string | null; name: string | null };
   photos: Photo[];
@@ -41,8 +41,11 @@ type Report = {
   title: string;
   body: string;
   location: string;
-  category: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed';
+  category: string | null;
+  visibility: 'public' | 'private';
+  status: 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed';
+  escalated: boolean;
+  escalated_task: { id: string; status: string; public: boolean } | null;
   created_at: string;
   resolved_at: string | null;
   closed_at: string | null;
@@ -55,6 +58,7 @@ type Report = {
 const STATUS_META: Record<string, { bg: string; fg: string; label: string }> = {
   open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
   in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
+  escalated: { bg: '#EEEDFD', fg: '#7367F0', label: 'Escalated' },
   resolved: { bg: '#dcfce7', fg: '#15803d', label: 'Resolved' },
   closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
 };
@@ -73,7 +77,7 @@ export default function ReportDetailScreen() {
 
   const load = useCallback(async () => {
     try {
-      const data = await apiFetch(`/api/v1/me/maintenance-reports/${id}`);
+      const data = await apiFetch(`/api/v1/me/complaints/${id}`);
       setReport(data.report);
     } catch {
       setReport(null);
@@ -92,7 +96,7 @@ export default function ReportDetailScreen() {
     if (!report) return;
     setResolveBusy(true);
     try {
-      const data = await apiFetch(`/api/v1/me/maintenance-reports/${report.id}/confirm`, {
+      const data = await apiFetch(`/api/v1/me/complaints/${report.id}/confirm`, {
         method: 'POST',
       });
       setReport(data.report);
@@ -106,7 +110,7 @@ export default function ReportDetailScreen() {
     if (!report || !disputeText.trim()) return;
     setResolveBusy(true);
     try {
-      const data = await apiFetch(`/api/v1/me/maintenance-reports/${report.id}/dispute`, {
+      const data = await apiFetch(`/api/v1/me/complaints/${report.id}/dispute`, {
         method: 'POST',
         body: JSON.stringify({ text: disputeText.trim() }),
       });
@@ -127,7 +131,7 @@ export default function ReportDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Report" />
+        <PurpleHeader title="Complaint" />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -135,22 +139,22 @@ export default function ReportDetailScreen() {
   if (!report) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Report" />
+        <PurpleHeader title="Complaint" />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Report not found.</Text>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>Complaint not found.</Text>
           <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
         </View>
       </View>
     );
   }
 
-  const canFreeReply = report.status === 'open' || report.status === 'in_progress';
+  const canFreeReply = report.status === 'open' || report.status === 'in_progress' || report.status === 'escalated';
   const isResolved = report.status === 'resolved';
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Report" />
+      <PurpleHeader title="Complaint" />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled">
@@ -161,7 +165,7 @@ export default function ReportDetailScreen() {
             <Card.Content>
               <Text variant="titleLarge" style={styles.title}>{report.title}</Text>
               <Text variant="bodySmall" style={styles.meta}>
-                {prettyCategory(report.category)} · {report.location}
+                {report.category ? `${report.category} · ` : ''}{report.location}
               </Text>
               <Text variant="bodySmall" style={styles.meta}>
                 Filed {new Date(report.created_at).toLocaleString()}
@@ -170,6 +174,36 @@ export default function ReportDetailScreen() {
               <StatusStepper status={report.status} />
             </Card.Content>
           </Card>
+
+          {/* Escalated to a maintenance task — deep-link to the public board */}
+          {report.escalated ? (
+            <Card style={[styles.card, styles.escalatedCard]}>
+              <Card.Content style={styles.escalatedContent}>
+                <Icon source="tools" size={22} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyMedium" style={{ fontWeight: '600', color: PRIMARY }}>
+                    Being worked on by the JMB
+                  </Text>
+                  <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
+                    Your complaint was escalated to a maintenance task.
+                  </Text>
+                </View>
+                {report.escalated_task?.public ? (
+                  <Button
+                    compact
+                    mode="text"
+                    onPress={() =>
+                      router.push({
+                        pathname: '/building-maintenance/[id]',
+                        params: { id: report.escalated_task!.id },
+                      })
+                    }>
+                    View progress
+                  </Button>
+                ) : null}
+              </Card.Content>
+            </Card>
+          ) : null}
 
           {/* Initial report body */}
           <Card style={styles.card}>
@@ -248,7 +282,7 @@ export default function ReportDetailScreen() {
             <Button
               mode="contained"
               icon="reply"
-              onPress={() => router.push({ pathname: '/maintenance/reply/[id]', params: { id: report.id } })}
+              onPress={() => router.push({ pathname: '/complaints/reply/[id]', params: { id: report.id } })}
               style={styles.replyBtn}
               contentStyle={styles.replyBtnContent}>
               Reply
@@ -279,7 +313,7 @@ export default function ReportDetailScreen() {
             <View style={styles.closedNotice}>
               <Icon source="lock-outline" size={16} color="#6b7280" />
               <Text variant="bodySmall" style={styles.closedNoticeText}>
-                This report is closed. Contact your JMB to reopen.
+                This complaint is closed. Contact your JMB to reopen.
               </Text>
             </View>
           )}
@@ -323,10 +357,13 @@ export default function ReportDetailScreen() {
   );
 }
 
-const STATUS_FLOW: Report['status'][] = ['open', 'in_progress', 'resolved', 'closed'];
+const STATUS_FLOW = ['open', 'in_progress', 'resolved', 'closed'];
 
 function StatusStepper({ status }: { status: Report['status'] }) {
-  const currentIdx = STATUS_FLOW.indexOf(status);
+  // 'escalated' means the JMB promoted it to a work order — for the
+  // resident's progress bar that reads as "in progress".
+  const effective = status === 'escalated' ? 'in_progress' : status;
+  const currentIdx = STATUS_FLOW.indexOf(effective);
   return (
     <View style={styles.stepperRow}>
       {STATUS_FLOW.map((s, i) => {
@@ -434,10 +471,6 @@ function PhotoStrip({
   );
 }
 
-function prettyCategory(c: string): string {
-  return c.split('_').map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-}
-
 function initial(name: string | null): string {
   if (!name) return '?';
   return name.trim().charAt(0).toUpperCase();
@@ -449,6 +482,8 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 
   card: { marginBottom: 12 },
+  escalatedCard: { backgroundColor: PRIMARY_TINT },
+  escalatedContent: { flexDirection: 'row', alignItems: 'center', gap: 10 },
 
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   title: { flex: 1, fontWeight: '700' },

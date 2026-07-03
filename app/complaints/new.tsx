@@ -12,7 +12,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
+import { Button, Card, HelperText, Icon, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 
 import { PhotoSourceSheet } from '@/components/photo-source-sheet';
 import { PurpleHeader } from '@/components/purple-header';
@@ -27,16 +27,12 @@ const PRIMARY_TINT = '#EEEDFD';
 const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8123';
 
-const CATEGORIES = [
-  { value: 'lift', label: 'Lift' },
-  { value: 'water', label: 'Water' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'cleanliness', label: 'Cleanliness' },
-  { value: 'security', label: 'Security' },
-  { value: 'common_area', label: 'Common area' },
-  { value: 'parking', label: 'Parking' },
-  { value: 'other', label: 'Other' },
-];
+type Category = { id: number; name: string };
+type CategoryGroup = {
+  organization_id: string;
+  organization_name: string;
+  categories: Category[];
+};
 
 export default function NewReportScreen() {
   const router = useRouter();
@@ -65,8 +61,33 @@ export default function NewReportScreen() {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [location, setLocation] = useState('');
-  const [category, setCategory] = useState('other');
+  const [categoryId, setCategoryId] = useState<number | null>(null);
+  const [visibility, setVisibility] = useState('private');
+  const [categoryGroups, setCategoryGroups] = useState<CategoryGroup[]>([]);
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
+
+  // Categories are per-JMB (the admin manages them), so fetch once and pick
+  // the group that matches the bound home's organization.
+  useEffect(() => {
+    apiFetch('/api/v1/me/complaints/categories')
+      .then((json) => setCategoryGroups(json.organizations ?? []))
+      .catch(() => setCategoryGroups([]));
+  }, []);
+
+  const categories = useMemo(() => {
+    const group =
+      categoryGroups.find((g) => g.organization_id === boundHome?.organization_id) ??
+      categoryGroups[0];
+    return group?.categories ?? [];
+  }, [categoryGroups, boundHome]);
+
+  // If the selected category doesn't belong to the current home's JMB
+  // (user switched homes), reset the selection.
+  useEffect(() => {
+    if (categoryId && !categories.some((c) => c.id === categoryId)) {
+      setCategoryId(null);
+    }
+  }, [categories, categoryId]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +143,8 @@ export default function NewReportScreen() {
       formData.append('title', title.trim());
       formData.append('body', body.trim());
       formData.append('location', location.trim());
-      formData.append('category', category);
+      if (categoryId) formData.append('category_id', String(categoryId));
+      formData.append('visibility', visibility);
       if (unitId) formData.append('unit_id', unitId);
       images.forEach((img, i) => {
         const name = img.fileName ?? `photo-${i}.jpg`;
@@ -132,7 +154,7 @@ export default function NewReportScreen() {
       });
 
       const token = await getToken();
-      const res = await fetch(`${BASE_URL}/api/v1/me/maintenance-reports`, {
+      const res = await fetch(`${BASE_URL}/api/v1/me/complaints`, {
         method: 'POST',
         headers: {
           Accept: 'application/json',
@@ -145,7 +167,7 @@ export default function NewReportScreen() {
         throw new ApiError(res.status, json, json?.message);
       }
       router.replace({
-        pathname: '/maintenance/[id]',
+        pathname: '/complaints/[id]',
         params: { id: json.report.id },
       });
     } catch (err) {
@@ -164,11 +186,11 @@ export default function NewReportScreen() {
   if (homes.length === 0) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="New report" />
+        <PurpleHeader title="New Complaint" />
         <View style={styles.empty}>
           <Icon source="home-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            Verify your home first to file maintenance reports.
+            Verify your home first to file complaints.
           </Text>
         </View>
       </View>
@@ -177,7 +199,7 @@ export default function NewReportScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="New Maintenance Report" />
+      <PurpleHeader title="New Complaint" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}>
@@ -239,17 +261,32 @@ export default function NewReportScreen() {
 
               <Text variant="titleSmall" style={styles.section}>Category</Text>
               <View style={styles.categoryGrid}>
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <Pressable
-                    key={c.value}
-                    onPress={() => setCategory(c.value)}
-                    style={[styles.categoryChip, category === c.value && styles.categoryChipActive]}>
-                    <Text style={[styles.categoryText, category === c.value && styles.categoryTextActive]}>
-                      {c.label}
+                    key={c.id}
+                    onPress={() => setCategoryId(c.id)}
+                    style={[styles.categoryChip, categoryId === c.id && styles.categoryChipActive]}>
+                    <Text style={[styles.categoryText, categoryId === c.id && styles.categoryTextActive]}>
+                      {c.name}
                     </Text>
                   </Pressable>
                 ))}
               </View>
+
+              <Text variant="titleSmall" style={styles.section}>Who can see this?</Text>
+              <SegmentedButtons
+                value={visibility}
+                onValueChange={setVisibility}
+                buttons={[
+                  { value: 'private', label: 'Private', icon: 'lock-outline' },
+                  { value: 'public', label: 'Public', icon: 'account-group-outline' },
+                ]}
+              />
+              <Text variant="bodySmall" style={styles.hint}>
+                {visibility === 'public'
+                  ? 'Other residents can see this in the Community Feed.'
+                  : 'Only you and the JMB can see this.'}
+              </Text>
 
               <Text variant="titleSmall" style={styles.section}>Photos (optional)</Text>
               <View style={styles.photoRow}>
@@ -284,7 +321,7 @@ export default function NewReportScreen() {
             disabled={submitDisabled}
             style={styles.submit}
             contentStyle={styles.submitContent}>
-            File report
+            File complaint
           </Button>
 
           <Text variant="bodySmall" style={styles.disclaimer}>

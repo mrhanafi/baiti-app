@@ -43,7 +43,8 @@ function AuthGate({ children }: { children: ReactNode }) {
     const inVisitorGroup = firstSeg === 'visitor';
     const inEventGroup = firstSeg === 'event';
     const inAnnouncementsGroup = firstSeg === 'announcements';
-    const inMaintenanceGroup = firstSeg === 'maintenance';
+    const inComplaintsGroup = firstSeg === 'complaints';
+    const inBuildingMaintenanceGroup = firstSeg === 'building-maintenance';
     const inFacilityGroup = firstSeg === 'facility';
     const inBillingGroup = firstSeg === 'billing';
     const inUtilitiesGroup = firstSeg === 'utilities';
@@ -85,7 +86,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       }
       return;
     }
-    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inMaintenanceGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
+    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inComplaintsGroup || inBuildingMaintenanceGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
     if (!inAllowedOwnerRoute) {
       router.replace('/(tabs)');
     }
@@ -131,7 +132,8 @@ export default function RootLayout() {
                   <Stack.Screen name="walk-in" />
                   <Stack.Screen name="event" />
                   <Stack.Screen name="announcements" />
-                  <Stack.Screen name="maintenance" />
+                  <Stack.Screen name="complaints" />
+                  <Stack.Screen name="building-maintenance" />
                   <Stack.Screen name="facility" />
                   <Stack.Screen name="billing" />
                   <Stack.Screen name="utilities" />
