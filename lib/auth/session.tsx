@@ -17,6 +17,9 @@ export type Organization = {
   id: string;
   legal_name: string;
   slug: string;
+  // Optional modules enabled for this JMB — Home tiles are filtered on this.
+  // Missing (older cached payload) means "show everything".
+  enabled_modules?: string[];
 };
 
 export type Unit = {

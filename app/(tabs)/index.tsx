@@ -43,14 +43,15 @@ type ServiceItem = {
   label: string;
   icon: string;
   href?: string;  // tap target — undefined means "coming soon" alert
+  module?: string;  // optional module key — tile hidden when the JMB has it disabled
 };
 
 const SERVICES: ServiceItem[] = [
-  { label: 'Complaints', icon: 'comment-alert', href: '/complaints' },
-  { label: 'Maintenance', icon: 'tools', href: '/building-maintenance' },
-  { label: 'Facility', icon: 'pool', href: '/facility' },
+  { label: 'Complaints', icon: 'comment-alert', href: '/complaints', module: 'community' },
+  { label: 'Maintenance', icon: 'tools', href: '/building-maintenance', module: 'maintenance' },
+  { label: 'Facility', icon: 'pool', href: '/facility', module: 'facility' },
   { label: 'Utilities', icon: 'lightning-bolt', href: '/utilities' },
-  { label: 'Announcements', icon: 'bullhorn', href: '/announcements' },
+  { label: 'Announcements', icon: 'bullhorn', href: '/announcements', module: 'community' },
 ];
 
 export default function HomeScreen() {
@@ -78,6 +79,15 @@ export default function HomeScreen() {
 
   const hasActiveOrg = (user?.organizations?.length ?? 0) > 0;
   const pendingOrg = user?.pending_organizations?.[0];
+
+  // Filter tiles by the active home's JMB modules. When the org can't be
+  // resolved or the payload has no module list, show everything.
+  const activeOrg = user?.organizations?.find((o) => o.id === primaryUnit?.organization_id);
+  const services = SERVICES.filter((s) => {
+    if (!s.module) return true;
+    if (!activeOrg?.enabled_modules) return true;
+    return activeOrg.enabled_modules.includes(s.module);
+  });
 
   const [checking, setChecking] = useState(false);
   const [todayPasses, setTodayPasses] = useState<TodayPass[]>([]);
@@ -361,7 +371,7 @@ export default function HomeScreen() {
           Services
         </Text>
         <View style={styles.servicesGrid}>
-          {SERVICES.map((service) => (
+          {services.map((service) => (
             <Card
               key={service.label}
               style={styles.serviceCard}
