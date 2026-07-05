@@ -47,7 +47,6 @@ type ServiceItem = {
 
 const SERVICES: ServiceItem[] = [
   { label: 'Complaints', icon: 'comment-alert', href: '/complaints' },
-  { label: 'Community Feed', icon: 'account-group', href: '/complaints/public' },
   { label: 'Maintenance', icon: 'tools', href: '/building-maintenance' },
   { label: 'Facility', icon: 'pool', href: '/facility' },
   { label: 'Utilities', icon: 'lightning-bolt', href: '/utilities' },

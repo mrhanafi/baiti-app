@@ -58,7 +58,8 @@ type Report = {
 const STATUS_META: Record<string, { bg: string; fg: string; label: string }> = {
   open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
   in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
-  escalated: { bg: '#EEEDFD', fg: '#7367F0', label: 'Escalated' },
+  // Residents see 'escalated' as plain 'In progress' — the term is admin-side vocabulary.
+  escalated: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
   resolved: { bg: '#dcfce7', fg: '#15803d', label: 'Resolved' },
   closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
 };
