@@ -1,0 +1,185 @@
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Card, Icon, IconButton, Text } from 'react-native-paper';
+
+import { PurpleHeader } from '@/components/purple-header';
+import { TabletContainer } from '@/components/tablet-container';
+import { apiFetch } from '@/lib/api/client';
+import { useAuth } from '@/lib/auth/session';
+
+const PRIMARY = '#7367F0';
+const PRIMARY_TINT = '#EEEDFD';
+
+export type WorkOrder = {
+  id: string;
+  title: string;
+  location: string | null;
+  category: string | null;
+  unit_number: string | null;
+  status: 'assigned' | 'in_progress' | 'on_hold' | 'completed' | 'closed';
+  priority: 'critical' | 'high' | 'normal' | 'low';
+  is_delayed: boolean;
+  due_date: string | null;
+  created_at: string;
+  completed_at: string | null;
+  organization: { id: string | null; legal_name: string | null };
+};
+
+export const WO_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
+  assigned: { bg: '#e0e7ff', fg: '#4338ca', label: 'Assigned' },
+  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
+  on_hold: { bg: '#fde8e8', fg: '#c81e1e', label: 'On hold' },
+  completed: { bg: '#dcfce7', fg: '#15803d', label: 'Completed' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+};
+
+export const WO_PRIORITY: Record<string, { fg: string; label: string }> = {
+  critical: { fg: '#b91c1c', label: 'CRITICAL' },
+  high: { fg: '#c2410c', label: 'HIGH' },
+  normal: { fg: '#6b7280', label: 'Normal' },
+  low: { fg: '#9ca3af', label: 'Low' },
+};
+
+export default function WorkOrderListScreen() {
+  const router = useRouter();
+  const { user, signOut } = useAuth();
+  const [ongoing, setOngoing] = useState<WorkOrder[]>([]);
+  const [done, setDone] = useState<WorkOrder[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Staff-only accounts get a logout button here (they have no Profile tab).
+  const isStaffOnly = (user?.roles ?? []).includes('staff') && !(user?.roles ?? []).includes('owner');
+
+  const load = useCallback(async () => {
+    try {
+      const data = await apiFetch('/api/v1/me/work-orders');
+      setOngoing(data.ongoing ?? []);
+      setDone(data.done ?? []);
+    } catch {
+      setOngoing([]);
+      setDone([]);
+    }
+    setLoading(false);
+  }, []);
+
+  useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
+
+  function renderCard(wo: WorkOrder) {
+    const s = WO_STATUS[wo.status] ?? WO_STATUS.assigned;
+    const p = WO_PRIORITY[wo.priority] ?? WO_PRIORITY.normal;
+    return (
+      <Card
+        key={wo.id}
+        style={styles.card}
+        onPress={() => router.push({ pathname: '/work-orders/[id]', params: { id: wo.id } })}>
+        <Card.Content>
+          <View style={styles.jmbRow}>
+            <View style={styles.jmbBadge}>
+              <Text style={styles.jmbBadgeText}>{wo.organization.legal_name ?? '—'}</Text>
+            </View>
+            <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
+              <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+            </View>
+          </View>
+          <Text variant="titleMedium" style={styles.title}>{wo.title}</Text>
+          <Text variant="bodySmall" style={styles.meta}>
+            {wo.location ?? '—'}
+            {wo.unit_number ? ` · Unit ${wo.unit_number}` : ''}
+            {wo.category ? ` · ${wo.category}` : ''}
+          </Text>
+          <View style={styles.bottomRow}>
+            <Text variant="bodySmall" style={[styles.priority, { color: p.fg }]}>{p.label}</Text>
+            {wo.due_date ? (
+              <Text variant="bodySmall" style={[styles.meta, wo.is_delayed && styles.overdue]}>
+                Due {new Date(wo.due_date).toLocaleDateString()}{wo.is_delayed ? ' · OVERDUE' : ''}
+              </Text>
+            ) : null}
+          </View>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <PurpleHeader
+        title="My Work Orders"
+        showBack={!isStaffOnly}
+        right={isStaffOnly ? (
+          <IconButton icon="logout" iconColor="#fff" size={22} onPress={() => signOut()} />
+        ) : undefined}
+      />
+
+      {loading && !refreshing ? (
+        <View style={styles.center}><ActivityIndicator /></View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
+         <TabletContainer>
+
+          <Text variant="titleSmall" style={styles.sectionTitle}>Ongoing</Text>
+          {ongoing.length === 0 ? (
+            <View style={styles.emptyBlock}>
+              <Icon source="clipboard-check-outline" size={36} color="#9ca3af" />
+              <Text variant="bodySmall" style={styles.emptyText}>
+                No work orders assigned to you right now.
+              </Text>
+            </View>
+          ) : (
+            ongoing.map(renderCard)
+          )}
+
+          <Text variant="titleSmall" style={[styles.sectionTitle, { marginTop: 20 }]}>
+            Done (last 30 days)
+          </Text>
+          {done.length === 0 ? (
+            <View style={styles.emptyBlock}>
+              <Icon source="check-circle-outline" size={36} color="#9ca3af" />
+              <Text variant="bodySmall" style={styles.emptyText}>Nothing completed yet.</Text>
+            </View>
+          ) : (
+            done.map(renderCard)
+          )}
+         </TabletContainer>
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  scroll: { padding: 16, paddingBottom: 48 },
+
+  sectionTitle: { fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', fontSize: 12, opacity: 0.6 },
+
+  card: { marginBottom: 10 },
+  jmbRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  jmbBadge: {
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4,
+    backgroundColor: PRIMARY_TINT, maxWidth: '60%',
+  },
+  jmbBadgeText: { color: PRIMARY, fontSize: 11, fontWeight: '700' },
+
+  title: { fontWeight: '600' },
+  meta: { opacity: 0.65, marginTop: 4 },
+  bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 },
+  priority: { fontWeight: '700', fontSize: 11 },
+  overdue: { color: '#b91c1c', fontWeight: '700', opacity: 1 },
+
+  statusPill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  statusText: { fontSize: 11, fontWeight: '600' },
+
+  emptyBlock: { alignItems: 'center', paddingVertical: 24, gap: 8 },
+  emptyText: { opacity: 0.6, textAlign: 'center' },
+});

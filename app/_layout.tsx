@@ -45,6 +45,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     const inAnnouncementsGroup = firstSeg === 'announcements';
     const inComplaintsGroup = firstSeg === 'complaints';
     const inBuildingMaintenanceGroup = firstSeg === 'building-maintenance';
+    const inWorkOrdersGroup = firstSeg === 'work-orders';
     const inFacilityGroup = firstSeg === 'facility';
     const inBillingGroup = firstSeg === 'billing';
     const inUtilitiesGroup = firstSeg === 'utilities';
@@ -86,7 +87,19 @@ function AuthGate({ children }: { children: ReactNode }) {
       }
       return;
     }
-    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inComplaintsGroup || inBuildingMaintenanceGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
+
+    // STAFF MODE — field staff (technicians) live entirely in work orders.
+    // Mixed accounts (staff who also own a unit) stay in owner mode and
+    // reach work orders via a Home tile instead.
+    const isStaffOnly = user.roles.includes('staff') && !user.roles.includes('owner');
+    if (isStaffOnly) {
+      if (!inWorkOrdersGroup) {
+        router.replace('/work-orders');
+      }
+      return;
+    }
+
+    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inComplaintsGroup || inBuildingMaintenanceGroup || inWorkOrdersGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
     if (!inAllowedOwnerRoute) {
       router.replace('/(tabs)');
     }
@@ -134,6 +147,7 @@ export default function RootLayout() {
                   <Stack.Screen name="announcements" />
                   <Stack.Screen name="complaints" />
                   <Stack.Screen name="building-maintenance" />
+                  <Stack.Screen name="work-orders" />
                   <Stack.Screen name="facility" />
                   <Stack.Screen name="billing" />
                   <Stack.Screen name="utilities" />

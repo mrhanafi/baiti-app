@@ -3,7 +3,7 @@ import {
   isErrorWithCode,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Avatar, Button, Divider, HelperText, Text, TextInput } from 'react-native-paper';
@@ -33,6 +33,21 @@ export default function LoginScreen() {
 
   const [remembered, setRemembered] = useState<RememberedIdentity | null>(null);
   const [hintLoaded, setHintLoaded] = useState(false);
+
+  // Hidden guard-tablet gesture: tapping the title 5 times opens the
+  // pairing screen. Kept off the visible UI so the app stays owner-only —
+  // pairing still requires a valid admin-generated code, so this is
+  // discovery-hiding, not security.
+  const [titleTaps, setTitleTaps] = useState(0);
+  function handleTitleTap() {
+    const next = titleTaps + 1;
+    if (next >= 5) {
+      setTitleTaps(0);
+      router.push('/pair');
+    } else {
+      setTitleTaps(next);
+    }
+  }
 
   // Email entry (for "Sign in with email" path)
   const [emailMode, setEmailMode] = useState(false);
@@ -182,7 +197,7 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}>
         <View style={styles.inner}>
-          <Text variant="headlineLarge" style={styles.title}>
+          <Text variant="headlineLarge" style={styles.title} onPress={handleTitleTap}>
             Welcome back
           </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
@@ -237,7 +252,7 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}>
       <View style={styles.inner}>
-        <Text variant="headlineLarge" style={styles.title}>
+        <Text variant="headlineLarge" style={styles.title} onPress={handleTitleTap}>
           Welcome to Baiti
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
@@ -331,21 +346,7 @@ export default function LoginScreen() {
           New here? Just continue — we&apos;ll set up your account during the first sign-in.
         </Text>
 
-        {/* Guard tablet pairing — small footer link. Lives only on State B
-            (the fresh / different-account state). Hidden during email entry
-            and on the "Welcome back" remembered-identity card. */}
-        {!emailMode ? (
-          <View style={styles.guardFooter}>
-            <Text variant="bodySmall" style={styles.guardFooterLabel}>
-              Setting up a guard tablet?
-            </Text>
-            <Link href="/pair">
-              <Text variant="bodySmall" style={styles.guardFooterLink}>
-                Pair this device
-              </Text>
-            </Link>
-          </View>
-        ) : null}
+
       </View>
     </KeyboardAvoidingView>
   );
@@ -379,9 +380,6 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
 
-  guardFooter: { flexDirection: 'row', justifyContent: 'center', marginTop: 36, gap: 6 },
-  guardFooterLabel: { opacity: 0.55 },
-  guardFooterLink: { color: PRIMARY, fontWeight: '500' },
   identityText: { flex: 1, minWidth: 0 },
   identityName: { fontSize: 16, fontWeight: '600', color: '#111827' },
   identityEmail: { fontSize: 13, color: '#6b7280', marginTop: 2 },

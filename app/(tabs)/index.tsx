@@ -88,6 +88,11 @@ export default function HomeScreen() {
     if (!activeOrg?.enabled_modules) return true;
     return activeOrg.enabled_modules.includes(s.module);
   });
+  // Mixed accounts: an owner who is also field staff somewhere gets a
+  // work-orders tile (staff-only accounts skip Home entirely).
+  if (user?.roles?.includes('staff')) {
+    services.push({ label: 'My Work Orders', icon: 'clipboard-list', href: '/work-orders' });
+  }
 
   const [checking, setChecking] = useState(false);
   const [todayPasses, setTodayPasses] = useState<TodayPass[]>([]);

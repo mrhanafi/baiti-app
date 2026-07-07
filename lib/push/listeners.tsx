@@ -24,6 +24,8 @@ export function PushListeners({ children }: { children: ReactNode }) {
             pass_id?: string;
             announcement_id?: string;
             report_id?: string;
+            task_id?: string;
+            complaint_id?: string;
           }
         | undefined;
       const kind = data?.kind;
@@ -38,6 +40,10 @@ export function PushListeners({ children }: { children: ReactNode }) {
         router.push({ pathname: '/announcements/[id]', params: { id: data.announcement_id } });
       } else if (kind === 'maintenance.update' && data?.report_id) {
         router.push({ pathname: '/complaints/[id]', params: { id: data.report_id } });
+      } else if (kind === 'maintenance.task.assigned' && data?.task_id) {
+        router.push({ pathname: '/work-orders/[id]', params: { id: data.task_id } });
+      } else if (kind === 'complaint.task.completed' && data?.complaint_id) {
+        router.push({ pathname: '/complaints/[id]', params: { id: data.complaint_id } });
       } else if (kind === 'facility.booking.update' || kind === 'facility.booking.pending') {
         router.push('/facility/bookings');
       }

@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,9 +9,9 @@ const PRIMARY = '#7367F0';
 /**
  * Vuexy-purple header band used across stacked screens (claim flow, visitor
  * flow, etc.). Pads for the status bar via useSafeAreaInsets so it never
- * overlaps the system icons.
+ * overlaps the system icons. Optional `right` slot for an action button.
  */
-export function PurpleHeader({ title, showBack = true }: { title: string; showBack?: boolean }) {
+export function PurpleHeader({ title, showBack = true, right }: { title: string; showBack?: boolean; right?: ReactNode }) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -25,7 +26,8 @@ export function PurpleHeader({ title, showBack = true }: { title: string; showBa
           style={styles.back}
         />
       ) : null}
-      <Text style={styles.title}>{title}</Text>
+      <Text style={[styles.title, { flex: 1 }]}>{title}</Text>
+      {right ?? null}
     </View>
   );
 }
