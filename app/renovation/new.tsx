@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
 
 import { PurpleHeader } from '@/components/purple-header';
@@ -37,14 +38,25 @@ export default function NewRenovationScreen() {
   );
 
   const [description, setDescription] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
+  const [showFromPicker, setShowFromPicker] = useState(false);
+  const [showToPicker, setShowToPicker] = useState(false);
   const [contractor, setContractor] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const submitDisabled =
-    loading || !description.trim() || !dateFrom.trim() || !dateTo.trim() || !contractor.trim();
+    loading || !description.trim() || !dateFrom || !dateTo || !contractor.trim();
+
+  function toYmd(d: Date): string {
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
 
   async function handleSubmit() {
     setLoading(true);
@@ -55,8 +67,8 @@ export default function NewRenovationScreen() {
         body: JSON.stringify({
           unit_id: unitId,
           description: description.trim(),
-          date_from: dateFrom.trim(),
-          date_to: dateTo.trim(),
+          date_from: dateFrom ? toYmd(dateFrom) : '',
+          date_to: dateTo ? toYmd(dateTo) : '',
           contractor_name: contractor.trim(),
         }),
       });
@@ -127,24 +139,65 @@ export default function NewRenovationScreen() {
                 placeholder="e.g. Kitchen cabinet replacement, new floor tiles in living room"
                 maxLength={5000}
               />
-              <TextInput
-                label="Start date *"
-                value={dateFrom}
-                onChangeText={setDateFrom}
-                mode="outlined"
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-                keyboardType="numbers-and-punctuation"
-              />
-              <TextInput
-                label="End date *"
-                value={dateTo}
-                onChangeText={setDateTo}
-                mode="outlined"
-                style={styles.input}
-                placeholder="YYYY-MM-DD"
-                keyboardType="numbers-and-punctuation"
-              />
+              <Pressable onPress={() => setShowFromPicker(true)}>
+                <TextInput
+                  label="Start date *"
+                  value={dateFrom ? dateFrom.toLocaleDateString() : ''}
+                  mode="outlined"
+                  style={styles.input}
+                  placeholder="Pick a date"
+                  editable={false}
+                  pointerEvents="none"
+                  right={<TextInput.Icon icon="calendar" onPress={() => setShowFromPicker(true)} />}
+                />
+              </Pressable>
+              <Pressable onPress={() => setShowToPicker(true)}>
+                <TextInput
+                  label="End date *"
+                  value={dateTo ? dateTo.toLocaleDateString() : ''}
+                  mode="outlined"
+                  style={styles.input}
+                  placeholder="Pick a date"
+                  editable={false}
+                  pointerEvents="none"
+                  right={<TextInput.Icon icon="calendar" onPress={() => setShowToPicker(true)} />}
+                />
+              </Pressable>
+
+              {showFromPicker ? (
+                <DateTimePicker
+                  value={dateFrom ?? today}
+                  mode="date"
+                  minimumDate={today}
+                  onChange={(_, d) => {
+                    setShowFromPicker(false);
+                    if (d) {
+                      const next = new Date(d);
+                      next.setHours(0, 0, 0, 0);
+                      setDateFrom(next);
+                      // End date can't sit before the new start date.
+                      if (dateTo && dateTo < next) {
+                        setDateTo(next);
+                      }
+                    }
+                  }}
+                />
+              ) : null}
+              {showToPicker ? (
+                <DateTimePicker
+                  value={dateTo ?? dateFrom ?? today}
+                  mode="date"
+                  minimumDate={dateFrom ?? today}
+                  onChange={(_, d) => {
+                    setShowToPicker(false);
+                    if (d) {
+                      const next = new Date(d);
+                      next.setHours(0, 0, 0, 0);
+                      setDateTo(next);
+                    }
+                  }}
+                />
+              ) : null}
               <TextInput
                 label="Contractor company *"
                 value={contractor}
