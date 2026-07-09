@@ -149,16 +149,17 @@ export default function BoardTaskDetailScreen() {
                 <View key={row.kind === 'date' ? `d-${row.label}` : row.item.id} style={styles.timelineRow}>
                   {/* Continuous rail: segment above the dot, dot, segment below */}
                   <View style={styles.rail}>
-                    <View style={[styles.railSegment, { height: row.kind === 'date' ? 8 : 22 }, idx === 0 && styles.railHidden]} />
-                    <View style={[
-                      row.kind === 'date' ? styles.dateDot : styles.timelineDot,
-                      row.kind === 'item' && {
-                        backgroundColor: row.item.status_change
-                          ? (TASK_STATUS[row.item.status_change]?.fg ?? '#9ca3af')
-                          : '#c7c9d9',
-                      },
-                    ]} />
-                    <View style={[styles.railSegment, { flex: 1 }, idx === rows.length - 1 && styles.railHidden]} />
+                    {row.kind === 'date' ? (
+                      <>
+                        <View style={[styles.railSegment, { height: 8, flexGrow: 0 }, idx === 0 && styles.railHidden]} />
+                        <View style={styles.dateDot} />
+                        <View style={styles.railSegment} />
+                      </>
+                    ) : (
+                      // Cards carry the status themselves — the rail just
+                      // passes through (short tail on the very last row).
+                      <View style={[styles.railSegment, idx === rows.length - 1 ? { height: 22, flexGrow: 0 } : null]} />
+                    )}
                   </View>
 
                   {row.kind === 'date' ? (
@@ -263,10 +264,9 @@ const styles = StyleSheet.create({
   },
   timelineRow: { flexDirection: 'row', gap: 10 },
   rail: { alignItems: 'center', width: 14 },
-  railSegment: { width: 2, backgroundColor: '#e5e7eb' },
+  railSegment: { width: 2, backgroundColor: '#e5e7eb', flexGrow: 1 },
   railHidden: { backgroundColor: 'transparent' },
   dateDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: PRIMARY },
-  timelineDot: { width: 10, height: 10, borderRadius: 5 },
   timelineCard: { flex: 1, marginBottom: 12 },
 
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
