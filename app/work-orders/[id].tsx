@@ -228,6 +228,7 @@ export default function WorkOrderDetailScreen() {
                   placeholder="e.g. Replaced the capacitor, testing now"
                   maxLength={5000}
                   style={{ marginBottom: 8 }}
+                  contentStyle={{ paddingTop: 12, paddingBottom: 12 }}
                 />
 
                 <View style={styles.photoRow}>
