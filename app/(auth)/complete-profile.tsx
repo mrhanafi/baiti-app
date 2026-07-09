@@ -16,14 +16,23 @@ const PRIMARY = '#7367F0';
  * redirects to (tabs) or claim flow.
  */
 export default function CompleteProfileScreen() {
-  const { email, registrationToken } = useLocalSearchParams<{
+  const { email, registrationToken, inviteName, invitePhone, inviteUnit, inviteOrg } = useLocalSearchParams<{
     email: string;
     registrationToken: string;
+    inviteName?: string;
+    invitePhone?: string;
+    inviteUnit?: string;
+    inviteOrg?: string;
   }>();
   const { completeRegistration } = useAuth();
 
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const invited = !!inviteOrg;
+
+  // JMB-invited owners get the registry name/phone prefilled — editable,
+  // because the invited person may not be the registered owner (a family
+  // member managing the unit).
+  const [name, setName] = useState(inviteName ?? '');
+  const [phone, setPhone] = useState(invitePhone ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,13 +72,21 @@ export default function CompleteProfileScreen() {
       style={styles.container}>
       <View style={styles.inner}>
         <Text variant="headlineMedium" style={styles.title}>
-          Almost done
+          {invited ? 'Welcome!' : 'Almost done'}
         </Text>
-        <Text variant="bodyMedium" style={styles.subtitle}>
-          Tell us a bit about you. Your email{'\n'}
-          <Text style={styles.email}>{email}</Text>
-          {'\n'}is now verified.
-        </Text>
+        {invited ? (
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            <Text style={styles.email}>{inviteOrg}</Text> has
+            {inviteUnit ? ` unit ${inviteUnit}` : ' your home'} ready for you.
+            Check your details below — your home links automatically when you continue.
+          </Text>
+        ) : (
+          <Text variant="bodyMedium" style={styles.subtitle}>
+            Tell us a bit about you. Your email{'\n'}
+            <Text style={styles.email}>{email}</Text>
+            {'\n'}is now verified.
+          </Text>
+        )}
 
         <TextInput
           label="Full name"

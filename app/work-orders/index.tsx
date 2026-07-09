@@ -41,9 +41,12 @@ export const WO_PRIORITY: Record<string, { fg: string; label: string }> = {
   low: { fg: '#9ca3af', label: 'Low' },
 };
 
+type WoStats = { ongoing: number; completed_this_month: number; overdue: number };
+
 export default function WorkOrderListScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const [stats, setStats] = useState<WoStats | null>(null);
   const [ongoing, setOngoing] = useState<WorkOrder[]>([]);
   const [done, setDone] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,9 +58,11 @@ export default function WorkOrderListScreen() {
   const load = useCallback(async () => {
     try {
       const data = await apiFetch('/api/v1/me/work-orders');
+      setStats(data.stats ?? null);
       setOngoing(data.ongoing ?? []);
       setDone(data.done ?? []);
     } catch {
+      setStats(null);
       setOngoing([]);
       setDone([]);
     }
@@ -126,6 +131,27 @@ export default function WorkOrderListScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
          <TabletContainer>
 
+          {stats ? (
+            <View style={styles.statsRow}>
+              <View style={styles.statBox}>
+                <Text variant="headlineSmall" style={styles.statValue}>{stats.ongoing}</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>Ongoing</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text variant="headlineSmall" style={[styles.statValue, { color: '#15803d' }]}>
+                  {stats.completed_this_month}
+                </Text>
+                <Text variant="bodySmall" style={styles.statLabel}>Done this month</Text>
+              </View>
+              <View style={styles.statBox}>
+                <Text variant="headlineSmall" style={[styles.statValue, stats.overdue > 0 && { color: '#b91c1c' }]}>
+                  {stats.overdue}
+                </Text>
+                <Text variant="bodySmall" style={styles.statLabel}>Overdue</Text>
+              </View>
+            </View>
+          ) : null}
+
           <Text variant="titleSmall" style={styles.sectionTitle}>Ongoing</Text>
           {ongoing.length === 0 ? (
             <View style={styles.emptyBlock}>
@@ -162,6 +188,15 @@ const styles = StyleSheet.create({
   scroll: { padding: 16, paddingBottom: 48 },
 
   sectionTitle: { fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', fontSize: 12, opacity: 0.6 },
+
+  statsRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  statBox: {
+    flex: 1, alignItems: 'center', paddingVertical: 12,
+    backgroundColor: '#fff', borderRadius: 12,
+    borderWidth: 1, borderColor: '#eee',
+  },
+  statValue: { fontWeight: '700', color: PRIMARY },
+  statLabel: { opacity: 0.6, marginTop: 2 },
 
   card: { marginBottom: 10 },
   jmbRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },

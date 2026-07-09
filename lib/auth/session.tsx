@@ -52,9 +52,16 @@ export type RegisterPayload = {
 
 // verifyLoginCode now branches based on whether user exists. Returned shape
 // tells the caller (the verify screen) what to do next.
+export type InviteHint = {
+  owner_name: string | null;
+  owner_phone: string | null;
+  unit_number: string | null;
+  organization_name: string | null;
+};
+
 export type VerifyCodeResult =
   | { status: 'logged_in' }
-  | { status: 'needs_registration'; email: string; registrationToken: string };
+  | { status: 'needs_registration'; email: string; registrationToken: string; invite: InviteHint | null };
 
 type AuthContextValue = {
   user: User | null;
@@ -179,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: 'needs_registration',
         email: data.email,
         registrationToken: data.registration_token,
+        invite: data.invite ?? null,
       };
     }
 

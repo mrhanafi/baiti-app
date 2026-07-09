@@ -41,6 +41,11 @@ export default function VerifyCodeScreen() {
           params: {
             email: result.email,
             registrationToken: result.registrationToken,
+            // JMB-invited owner? Prefill hints for the profile screen.
+            inviteName: result.invite?.owner_name ?? '',
+            invitePhone: result.invite?.owner_phone ?? '',
+            inviteUnit: result.invite?.unit_number ?? '',
+            inviteOrg: result.invite?.organization_name ?? '',
           },
         });
         return;
