@@ -139,56 +139,55 @@ export default function BoardTaskDetailScreen() {
               <Text variant="bodySmall" style={styles.emptyText}>No updates posted yet.</Text>
             </View>
           ) : (
-            <Card style={styles.card}>
-              <Card.Content>
-                {groupByDate(task.updates).map((group, gi) => (
-                  <View key={group.label} style={gi > 0 ? { marginTop: 16 } : undefined}>
-                    <Text variant="bodySmall" style={styles.dateHeader}>{group.label}</Text>
-                    {group.items.map((u, i) => (
-                      <View key={u.id} style={styles.timelineRow}>
-                        <View style={styles.timelineLeft}>
-                          <View style={[styles.timelineDot, {
-                            backgroundColor: u.status_change
-                              ? (TASK_STATUS[u.status_change]?.fg ?? '#9ca3af')
-                              : '#c7c9d9',
-                          }]} />
-                          {i < group.items.length - 1 ? <View style={styles.timelineLine} /> : null}
-                        </View>
-                        <View style={styles.timelineBody}>
-                          <Text variant="bodySmall" style={styles.updateTime}>
-                            {new Date(u.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </Text>
-                          {u.status_change ? (
-                            <View style={styles.statusChangeRow}>
-                              <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
-                              <View style={[styles.statusPill, {
-                                backgroundColor: TASK_STATUS[u.status_change]?.bg ?? '#f3f4f6',
+            groupByDate(task.updates).map((group) => (
+              <View key={group.label}>
+                <Text variant="bodySmall" style={styles.dateHeader}>{group.label}</Text>
+                {group.items.map((u, i) => (
+                  <View key={u.id} style={styles.timelineRow}>
+                    {/* Rail lives OUTSIDE the card — dot + connecting line */}
+                    <View style={styles.timelineLeft}>
+                      <View style={[styles.timelineDot, {
+                        backgroundColor: u.status_change
+                          ? (TASK_STATUS[u.status_change]?.fg ?? '#9ca3af')
+                          : '#c7c9d9',
+                      }]} />
+                      {i < group.items.length - 1 ? <View style={styles.timelineLine} /> : null}
+                    </View>
+                    <Card style={styles.timelineCard}>
+                      <Card.Content>
+                        <Text variant="bodySmall" style={styles.updateTime}>
+                          {new Date(u.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                        {u.status_change ? (
+                          <View style={styles.statusChangeRow}>
+                            <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
+                            <View style={[styles.statusPill, {
+                              backgroundColor: TASK_STATUS[u.status_change]?.bg ?? '#f3f4f6',
+                            }]}>
+                              <Text style={[styles.statusText, {
+                                color: TASK_STATUS[u.status_change]?.fg ?? '#6b7280',
                               }]}>
-                                <Text style={[styles.statusText, {
-                                  color: TASK_STATUS[u.status_change]?.fg ?? '#6b7280',
-                                }]}>
-                                  {TASK_STATUS[u.status_change]?.label ?? u.status_change}
-                                </Text>
-                              </View>
+                                {TASK_STATUS[u.status_change]?.label ?? u.status_change}
+                              </Text>
                             </View>
-                          ) : null}
-                          {u.note ? <Text variant="bodyMedium" style={styles.body}>{u.note}</Text> : null}
-                          {u.photos.length > 0 ? (
-                            <View style={styles.photoRow}>
-                              {u.photos.map((p, i2) => (
-                                <Pressable key={p.id} onPress={() => openViewer(u.photos, i2)} style={styles.photoItem}>
-                                  <Image source={{ uri: p.url }} style={styles.photoImg} />
-                                </Pressable>
-                              ))}
-                            </View>
-                          ) : null}
-                        </View>
-                      </View>
-                    ))}
+                          </View>
+                        ) : null}
+                        {u.note ? <Text variant="bodyMedium" style={styles.body}>{u.note}</Text> : null}
+                        {u.photos.length > 0 ? (
+                          <View style={styles.photoRow}>
+                            {u.photos.map((p, i2) => (
+                              <Pressable key={p.id} onPress={() => openViewer(u.photos, i2)} style={styles.photoItem}>
+                                <Image source={{ uri: p.url }} style={styles.photoImg} />
+                              </Pressable>
+                            ))}
+                          </View>
+                        ) : null}
+                      </Card.Content>
+                    </Card>
                   </View>
                 ))}
-              </Card.Content>
-            </Card>
+              </View>
+            ))
           )}
        </TabletContainer>
       </ScrollView>
@@ -249,13 +248,13 @@ const styles = StyleSheet.create({
 
   dateHeader: {
     fontWeight: '700', textTransform: 'uppercase', fontSize: 11,
-    opacity: 0.55, marginBottom: 10,
+    opacity: 0.55, marginBottom: 10, marginTop: 4,
   },
-  timelineRow: { flexDirection: 'row', gap: 12 },
+  timelineRow: { flexDirection: 'row', gap: 10 },
   timelineLeft: { alignItems: 'center', width: 14 },
-  timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 5 },
-  timelineLine: { flex: 1, width: 2, backgroundColor: '#e5e7eb', marginTop: 4, marginBottom: 2 },
-  timelineBody: { flex: 1, paddingBottom: 16 },
+  timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 18 },
+  timelineLine: { flex: 1, width: 2, backgroundColor: '#e5e7eb', marginTop: 4 },
+  timelineCard: { flex: 1, marginBottom: 12 },
 
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
   photoItem: { width: 90, height: 90, borderRadius: 6, overflow: 'hidden', backgroundColor: '#f3f4f6' },
