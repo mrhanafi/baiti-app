@@ -194,12 +194,19 @@ export default function NewEventScreen() {
                 <DateTimePicker
                   value={validFrom}
                   mode="date"
+                  minimumDate={new Date()}
                   onChange={(_, d) => {
                     setShowFromPicker(false);
                     if (d) {
                       const next = new Date(d);
                       next.setHours(0, 0, 0, 0);
                       setValidFrom(next);
+                      // Until can't sit before the new from — follow it forward.
+                      if (validUntil < next) {
+                        const until = new Date(next);
+                        until.setHours(23, 59, 59, 999);
+                        setValidUntil(until);
+                      }
                     }
                   }}
                 />
@@ -208,6 +215,7 @@ export default function NewEventScreen() {
                 <DateTimePicker
                   value={validUntil}
                   mode="date"
+                  minimumDate={validFrom}
                   onChange={(_, d) => {
                     setShowUntilPicker(false);
                     if (d) {
