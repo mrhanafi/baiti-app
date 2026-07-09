@@ -69,6 +69,25 @@ export default function NewVisitorScreen() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
+  // Active renovation permit on the bound unit → offer tagging the pass as
+  // a renovation contractor (guards see it at the gate).
+  const [activePermit, setActivePermit] = useState<{ id: string; contractor_name: string; unit_number: string | null } | null>(null);
+  const [tagRenovation, setTagRenovation] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/api/v1/me/renovation-permits')
+      .then((data) => {
+        const boundUnitNumber = user?.units?.find((u) => u.id === unitId)?.unit_number;
+        const permit = (data.permits ?? []).find(
+          (p: { status: string; unit_number: string | null }) =>
+            p.status === 'active' && p.unit_number === boundUnitNumber,
+        );
+        setActivePermit(permit ?? null);
+        if (!permit) setTagRenovation(false);
+      })
+      .catch(() => setActivePermit(null));
+  }, [unitId, user?.units]);
+
   const homes = user?.units ?? [];
   const boundHome = useMemo(
     () => homes.find((h) => h.id === unitId) ?? homes[0] ?? null,
@@ -123,6 +142,7 @@ export default function NewVisitorScreen() {
           vehicle_plate: vehiclePlate.trim() || undefined,
           valid_from: effectiveFrom.toISOString(),
           valid_until: effectiveUntil.toISOString(),
+          renovation_permit_id: tagRenovation && activePermit ? activePermit.id : undefined,
         }),
       });
       // Land on Visitors tab — focus-effect there reloads from the API.
@@ -244,6 +264,23 @@ export default function NewVisitorScreen() {
               ))}
             </View>
 
+            {activePermit ? (
+              <Pressable
+                onPress={() => setTagRenovation(!tagRenovation)}
+                style={[styles.renoBox, tagRenovation && styles.renoBoxActive]}>
+                <Icon source={tagRenovation ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={PRIMARY} />
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodyMedium" style={{ fontWeight: '600' }}>
+                    Renovation contractor
+                  </Text>
+                  <Text variant="bodySmall" style={{ opacity: 0.65 }}>
+                    Links this pass to your active permit ({activePermit.contractor_name}) —
+                    the guard sees it at the gate.
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null}
+
             <Text variant="titleSmall" style={styles.section}>Vehicle</Text>
             <TextInput
               label="Plate number (optional)"
@@ -354,6 +391,12 @@ const styles = StyleSheet.create({
   },
 
   purposeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  renoBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 12, padding: 12, borderRadius: 10,
+    borderWidth: 1, borderColor: '#e5e7eb', backgroundColor: '#fafafa',
+  },
+  renoBoxActive: { borderColor: PRIMARY, backgroundColor: PRIMARY_TINT },
   purposeChip: {
     paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999,
     backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: 'transparent',

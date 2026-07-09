@@ -34,6 +34,7 @@ type Pass = {
   open_entry: { visit_tag: string; scanned_at: string } | null;
   unit: { unit_number: string | null; property_name: string | null };
   host: { name: string | null; phone: string | null };
+  renovation: { permit_no: number | null; contractor_name: string | null } | null;
 };
 
 const STATE_COLOR: Record<string, { bg: string; fg: string; label: string }> = {
@@ -165,6 +166,16 @@ export default function GuardPassDetail() {
               {pass.purpose.charAt(0).toUpperCase() + pass.purpose.slice(1)}
               {pass.vehicle_plate ? `  ·  ${pass.vehicle_plate}` : ''}
             </Text>
+
+            {pass.renovation ? (
+              <View style={styles.renoBanner}>
+                <Icon source="hammer" size={18} color="#92400e" />
+                <Text style={styles.renoBannerText}>
+                  Renovation contractor — Permit #{pass.renovation.permit_no}
+                  {pass.renovation.contractor_name ? ` (${pass.renovation.contractor_name})` : ''}
+                </Text>
+              </View>
+            ) : null}
 
             {state === 'inside' && pass.open_entry ? (
               <View style={styles.insideBanner}>
@@ -309,6 +320,13 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
   visitorName: { fontWeight: '700', marginTop: 8, textAlign: 'center' },
   subline: { opacity: 0.65, marginTop: 4, textAlign: 'center' },
+
+  renoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#fef3c7', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 8, marginTop: 10,
+  },
+  renoBannerText: { color: '#92400e', fontWeight: '600', fontSize: 13, flex: 1 },
 
   insideBanner: {
     flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12,

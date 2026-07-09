@@ -26,6 +26,7 @@ export function PushListeners({ children }: { children: ReactNode }) {
             report_id?: string;
             task_id?: string;
             complaint_id?: string;
+            permit_id?: string;
           }
         | undefined;
       const kind = data?.kind;
@@ -44,6 +45,8 @@ export function PushListeners({ children }: { children: ReactNode }) {
         router.push({ pathname: '/work-orders/[id]', params: { id: data.task_id } });
       } else if (kind === 'complaint.task.completed' && data?.complaint_id) {
         router.push({ pathname: '/complaints/[id]', params: { id: data.complaint_id } });
+      } else if (kind === 'renovation.updated' && data?.permit_id) {
+        router.push({ pathname: '/renovation/[id]', params: { id: data.permit_id } });
       } else if (kind === 'facility.booking.update' || kind === 'facility.booking.pending') {
         router.push('/facility/bookings');
       }

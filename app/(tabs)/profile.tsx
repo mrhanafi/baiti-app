@@ -84,6 +84,17 @@ export default function ProfileScreen() {
         </Button>
 
         <List.Section style={styles.list}>
+          <List.Subheader>Requests</List.Subheader>
+          <List.Item
+            title="Renovation permits"
+            description="Ask your JMB before renovating"
+            left={(props) => <List.Icon {...props} icon="hammer" />}
+            right={(props) => <List.Icon {...props} icon="chevron-right" />}
+            onPress={() => router.push('/renovation')}
+          />
+        </List.Section>
+
+        <List.Section style={styles.list}>
           <List.Subheader>Appearance</List.Subheader>
           <List.Item
             title="Dark mode"

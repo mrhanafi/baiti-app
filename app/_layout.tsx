@@ -46,6 +46,7 @@ function AuthGate({ children }: { children: ReactNode }) {
     const inComplaintsGroup = firstSeg === 'complaints';
     const inBuildingMaintenanceGroup = firstSeg === 'building-maintenance';
     const inWorkOrdersGroup = firstSeg === 'work-orders';
+    const inRenovationGroup = firstSeg === 'renovation';
     const inFacilityGroup = firstSeg === 'facility';
     const inBillingGroup = firstSeg === 'billing';
     const inUtilitiesGroup = firstSeg === 'utilities';
@@ -99,7 +100,7 @@ function AuthGate({ children }: { children: ReactNode }) {
       return;
     }
 
-    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inComplaintsGroup || inBuildingMaintenanceGroup || inWorkOrdersGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
+    const inAllowedOwnerRoute = inTabsGroup || inClaimGroup || inVisitorGroup || inEventGroup || inAnnouncementsGroup || inComplaintsGroup || inBuildingMaintenanceGroup || inWorkOrdersGroup || inRenovationGroup || inFacilityGroup || inBillingGroup || inUtilitiesGroup;
     if (!inAllowedOwnerRoute) {
       router.replace('/(tabs)');
     }
@@ -148,6 +149,7 @@ export default function RootLayout() {
                   <Stack.Screen name="complaints" />
                   <Stack.Screen name="building-maintenance" />
                   <Stack.Screen name="work-orders" />
+                  <Stack.Screen name="renovation" />
                   <Stack.Screen name="facility" />
                   <Stack.Screen name="billing" />
                   <Stack.Screen name="utilities" />
