@@ -10,6 +10,8 @@ import { TabletContainer } from '@/components/tablet-container';
 import { apiFetch } from '@/lib/api/client';
 import { TASK_STATUS, type BoardTask } from './index';
 
+const PRIMARY = '#7367F0';
+
 type Photo = { id: string; url: string };
 type TaskUpdate = {
   id: string;
@@ -23,13 +25,16 @@ type TaskDetail = BoardTask & {
   updates: TaskUpdate[];
 };
 
-function groupByDate(updates: TaskUpdate[]): { label: string; items: TaskUpdate[] }[] {
+type TimelineRow = { kind: 'date'; label: string } | { kind: 'item'; item: TaskUpdate };
+
+function toTimelineRows(updates: TaskUpdate[]): TimelineRow[] {
   const sorted = [...updates].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  const groups: { label: string; items: TaskUpdate[] }[] = [];
+  const rows: TimelineRow[] = [];
   const today = new Date().toDateString();
   const yesterday = new Date(Date.now() - 86400000).toDateString();
+  let lastLabel = '';
 
   for (const u of sorted) {
     const day = new Date(u.created_at).toDateString();
@@ -38,15 +43,14 @@ function groupByDate(updates: TaskUpdate[]): { label: string; items: TaskUpdate[
       : day === yesterday
         ? 'Yesterday'
         : new Date(u.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
-    const last = groups[groups.length - 1];
-    if (last && last.label === label) {
-      last.items.push(u);
-    } else {
-      groups.push({ label, items: [u] });
+    if (label !== lastLabel) {
+      rows.push({ kind: 'date', label });
+      lastLabel = label;
     }
+    rows.push({ kind: 'item', item: u });
   }
 
-  return groups;
+  return rows;
 }
 
 export default function BoardTaskDetailScreen() {
@@ -139,44 +143,51 @@ export default function BoardTaskDetailScreen() {
               <Text variant="bodySmall" style={styles.emptyText}>No updates posted yet.</Text>
             </View>
           ) : (
-            groupByDate(task.updates).map((group) => (
-              <View key={group.label}>
-                <Text variant="bodySmall" style={styles.dateHeader}>{group.label}</Text>
-                {group.items.map((u, i) => (
-                  <View key={u.id} style={styles.timelineRow}>
-                    {/* Rail lives OUTSIDE the card — dot + connecting line */}
-                    <View style={styles.timelineLeft}>
-                      <View style={[styles.timelineDot, {
-                        backgroundColor: u.status_change
-                          ? (TASK_STATUS[u.status_change]?.fg ?? '#9ca3af')
+            (() => {
+              const rows = toTimelineRows(task.updates);
+              return rows.map((row, idx) => (
+                <View key={row.kind === 'date' ? `d-${row.label}` : row.item.id} style={styles.timelineRow}>
+                  {/* Continuous rail: segment above the dot, dot, segment below */}
+                  <View style={styles.rail}>
+                    <View style={[styles.railSegment, { height: row.kind === 'date' ? 8 : 22 }, idx === 0 && styles.railHidden]} />
+                    <View style={[
+                      row.kind === 'date' ? styles.dateDot : styles.timelineDot,
+                      row.kind === 'item' && {
+                        backgroundColor: row.item.status_change
+                          ? (TASK_STATUS[row.item.status_change]?.fg ?? '#9ca3af')
                           : '#c7c9d9',
-                      }]} />
-                      {i < group.items.length - 1 ? <View style={styles.timelineLine} /> : null}
-                    </View>
+                      },
+                    ]} />
+                    <View style={[styles.railSegment, { flex: 1 }, idx === rows.length - 1 && styles.railHidden]} />
+                  </View>
+
+                  {row.kind === 'date' ? (
+                    <Text variant="bodySmall" style={styles.dateHeader}>{row.label}</Text>
+                  ) : (
                     <Card style={styles.timelineCard}>
                       <Card.Content>
                         <Text variant="bodySmall" style={styles.updateTime}>
-                          {new Date(u.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(row.item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </Text>
-                        {u.status_change ? (
+                        {row.item.status_change ? (
                           <View style={styles.statusChangeRow}>
                             <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
                             <View style={[styles.statusPill, {
-                              backgroundColor: TASK_STATUS[u.status_change]?.bg ?? '#f3f4f6',
+                              backgroundColor: TASK_STATUS[row.item.status_change]?.bg ?? '#f3f4f6',
                             }]}>
                               <Text style={[styles.statusText, {
-                                color: TASK_STATUS[u.status_change]?.fg ?? '#6b7280',
+                                color: TASK_STATUS[row.item.status_change]?.fg ?? '#6b7280',
                               }]}>
-                                {TASK_STATUS[u.status_change]?.label ?? u.status_change}
+                                {TASK_STATUS[row.item.status_change]?.label ?? row.item.status_change}
                               </Text>
                             </View>
                           </View>
                         ) : null}
-                        {u.note ? <Text variant="bodyMedium" style={styles.body}>{u.note}</Text> : null}
-                        {u.photos.length > 0 ? (
+                        {row.item.note ? <Text variant="bodyMedium" style={styles.body}>{row.item.note}</Text> : null}
+                        {row.item.photos.length > 0 ? (
                           <View style={styles.photoRow}>
-                            {u.photos.map((p, i2) => (
-                              <Pressable key={p.id} onPress={() => openViewer(u.photos, i2)} style={styles.photoItem}>
+                            {row.item.photos.map((p, i2) => (
+                              <Pressable key={p.id} onPress={() => openViewer(row.item.photos, i2)} style={styles.photoItem}>
                                 <Image source={{ uri: p.url }} style={styles.photoImg} />
                               </Pressable>
                             ))}
@@ -184,10 +195,10 @@ export default function BoardTaskDetailScreen() {
                         ) : null}
                       </Card.Content>
                     </Card>
-                  </View>
-                ))}
-              </View>
-            ))
+                  )}
+                </View>
+              ));
+            })()
           )}
        </TabletContainer>
       </ScrollView>
@@ -248,12 +259,14 @@ const styles = StyleSheet.create({
 
   dateHeader: {
     fontWeight: '700', textTransform: 'uppercase', fontSize: 11,
-    opacity: 0.55, marginBottom: 10, marginTop: 4,
+    opacity: 0.55, marginTop: 8, marginBottom: 4,
   },
   timelineRow: { flexDirection: 'row', gap: 10 },
-  timelineLeft: { alignItems: 'center', width: 14 },
-  timelineDot: { width: 10, height: 10, borderRadius: 5, marginTop: 18 },
-  timelineLine: { flex: 1, width: 2, backgroundColor: '#e5e7eb', marginTop: 4 },
+  rail: { alignItems: 'center', width: 14 },
+  railSegment: { width: 2, backgroundColor: '#e5e7eb' },
+  railHidden: { backgroundColor: 'transparent' },
+  dateDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: PRIMARY },
+  timelineDot: { width: 10, height: 10, borderRadius: 5 },
   timelineCard: { flex: 1, marginBottom: 12 },
 
   photoRow: { flexDirection: 'row', gap: 6, marginTop: 12, flexWrap: 'wrap' },
