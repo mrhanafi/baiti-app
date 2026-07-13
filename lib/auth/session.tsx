@@ -11,6 +11,7 @@ import {
   setRememberedIdentity,
   setToken,
 } from '@/lib/auth/storage';
+import { syncLocaleAfterAuth } from '@/lib/i18n';
 import { getExpoPushToken } from '@/lib/push/register';
 
 export type Organization = {
@@ -116,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data);
         // Refresh push token on app boot — Expo can rotate it.
         void registerPushToken('/api/v1/me/push-token');
+    syncLocaleAfterAuth();
       } catch {
         // Token bad or backend unreachable — clear it so we land on login.
         await clearToken();
@@ -144,6 +146,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await rememberFromUser(me, null);
     // Best-effort push token registration. Won't block login if it fails.
     void registerPushToken('/api/v1/me/push-token');
+    syncLocaleAfterAuth();
   }
 
   async function signUp(payload: RegisterPayload) {
@@ -162,6 +165,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
     await rememberFromUser(me, null);
     void registerPushToken('/api/v1/me/push-token');
+    syncLocaleAfterAuth();
   }
 
   async function requestLoginCode(email: string): Promise<{ expires_at: string }> {
@@ -196,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
     await rememberFromUser(me, null);
     void registerPushToken('/api/v1/me/push-token');
+    syncLocaleAfterAuth();
     return { status: 'logged_in' };
   }
 
@@ -221,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(me);
     await rememberFromUser(me, null);
     void registerPushToken('/api/v1/me/push-token');
+    syncLocaleAfterAuth();
   }
 
   async function signInWithGoogle(idToken: string, avatarUrl: string | null = null): Promise<{ email: string }> {

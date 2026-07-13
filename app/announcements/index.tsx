@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 
@@ -23,6 +24,7 @@ type Announcement = {
 
 export default function AnnouncementsListScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { refreshUser } = useAuth();
   const [items, setItems] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,14 +63,14 @@ export default function AnnouncementsListScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Announcements" />
+      <PurpleHeader title={t('announcements.title')} />
       {loading && !refreshing ? (
         <View style={styles.center}><ActivityIndicator /></View>
       ) : items.length === 0 ? (
         <View style={styles.center}>
           <Icon source="speakerphone" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center', paddingHorizontal: 32 }}>
-            No announcements from your JMB yet.
+            {t('announcements.noAnnouncements')}
           </Text>
         </View>
       ) : (
@@ -85,7 +87,7 @@ export default function AnnouncementsListScreen() {
                 <View style={styles.titleRow}>
                   {item.pinned ? (
                     <View style={styles.pinPill}>
-                      <Text style={styles.pinText}>📌 Pinned</Text>
+                      <Text style={styles.pinText}>{t('announcements.pinned')}</Text>
                     </View>
                   ) : null}
                   {item.organization?.legal_name ? (
@@ -108,7 +110,7 @@ export default function AnnouncementsListScreen() {
                   <View style={styles.photoStrip}>
                     <Icon source="image-multiple" size={16} color={PRIMARY} />
                     <Text variant="bodySmall" style={{ color: PRIMARY, marginLeft: 4 }}>
-                      {item.photos.length} photo{item.photos.length === 1 ? '' : 's'}
+                      {t('announcements.photoCount', { count: item.photos.length })}
                     </Text>
                   </View>
                 ) : null}

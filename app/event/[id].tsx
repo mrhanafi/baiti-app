@@ -1,5 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Icon, Text } from 'react-native-paper';
 
@@ -34,13 +35,14 @@ type Event = {
   guests: Guest[];
 };
 
+// label is an i18n key — wrap with t(...) where it's rendered.
 const STATE_COLOR: Record<string, { bg: string; fg: string; label: string }> = {
-  awaiting: { bg: '#dcfce7', fg: '#15803d', label: 'Awaiting' },
-  inside: { bg: '#dbeafe', fg: '#1d4ed8', label: 'Inside' },
-  out: { bg: '#f3f4f6', fg: '#6b7280', label: 'Visit complete' },
-  upcoming: { bg: PRIMARY_TINT, fg: PRIMARY, label: 'Upcoming' },
-  expired: { bg: '#f3f4f6', fg: '#6b7280', label: 'Expired' },
-  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: 'Cancelled' },
+  awaiting: { bg: '#dcfce7', fg: '#15803d', label: 'event.detail.state.awaiting' },
+  inside: { bg: '#dbeafe', fg: '#1d4ed8', label: 'event.detail.state.inside' },
+  out: { bg: '#f3f4f6', fg: '#6b7280', label: 'event.detail.state.out' },
+  upcoming: { bg: PRIMARY_TINT, fg: PRIMARY, label: 'event.detail.state.upcoming' },
+  expired: { bg: '#f3f4f6', fg: '#6b7280', label: 'event.detail.state.expired' },
+  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: 'event.detail.state.cancelled' },
 };
 
 const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
@@ -52,6 +54,7 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
 
 export default function EventDetailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { id, justCreated } = useLocalSearchParams<{ id: string; justCreated?: string }>();
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,9 +81,9 @@ export default function EventDetailScreen() {
     const text =
       `${event.title}\n` +
       `${new Date(event.valid_from).toLocaleString()} – ${new Date(event.valid_until).toLocaleString()}\n` +
-      `${event.unit.property_name}, Unit ${event.unit.unit_number}\n` +
+      `${event.unit.property_name}, ${t('common.unit', { number: event.unit.unit_number })}\n` +
       `\n` +
-      `Register here:\n` +
+      `${t('event.detail.registerHere')}\n` +
       `${event.invite_url}`;
     try {
       await Share.share({ message: text, url: event.invite_url });
@@ -92,12 +95,12 @@ export default function EventDetailScreen() {
   async function handleRevoke() {
     if (!event) return;
     Alert.alert(
-      'Revoke this invite?',
-      `Cancels all ${event.guest_count} registered guest passes. This can't be undone.`,
+      t('event.detail.revokeTitle'),
+      t('event.detail.revokeMessage', { count: event.guest_count }),
       [
-        { text: 'Keep active', style: 'cancel' },
+        { text: t('event.detail.keepActive'), style: 'cancel' },
         {
-          text: 'Revoke',
+          text: t('event.detail.revoke'),
           style: 'destructive',
           onPress: async () => {
             setRevoking(true);
@@ -105,8 +108,8 @@ export default function EventDetailScreen() {
               const data = await apiFetch(`/api/v1/me/visitor-events/${id}/revoke`, { method: 'POST' });
               setEvent((prev) => prev ? { ...prev, ...data.event } : prev);
             } catch (err) {
-              const msg = err instanceof ApiError ? err.message : 'Could not revoke.';
-              Alert.alert('Failed', msg);
+              const msg = err instanceof ApiError ? err.message : t('event.detail.couldNotRevoke');
+              Alert.alert(t('event.detail.failed'), msg);
             }
             setRevoking(false);
           },
@@ -118,7 +121,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Event" />
+        <PurpleHeader title={t('event.detail.title')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -126,10 +129,10 @@ export default function EventDetailScreen() {
   if (!event) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Event" />
+        <PurpleHeader title={t('event.detail.title')} />
         <View style={styles.center}>
-          <Text>Event not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text>{t('event.detail.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -141,16 +144,16 @@ export default function EventDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Event" />
+      <PurpleHeader title={t('event.detail.title')} />
       <ScrollView contentContainerStyle={styles.scroll}>
         {justCreated === '1' ? (
           <Card style={[styles.card, { backgroundColor: '#dcfce7' }]}>
             <Card.Content>
               <Text variant="titleSmall" style={{ color: '#15803d', fontWeight: '700' }}>
-                ✓ Event created
+                {t('event.detail.created')}
               </Text>
               <Text variant="bodySmall" style={{ color: '#15803d', marginTop: 4 }}>
-                Share the link below. Each person who fills the form gets their own pass.
+                {t('event.detail.createdHint')}
               </Text>
             </Card.Content>
           </Card>
@@ -163,11 +166,15 @@ export default function EventDetailScreen() {
                 {event.title}
               </Text>
               <View style={[styles.statusPill, { backgroundColor: statusMeta.bg }]}>
-                <Text style={[styles.statusText, { color: statusMeta.fg }]}>{event.status}</Text>
+                <Text style={[styles.statusText, { color: statusMeta.fg }]}>
+                  {t(`event.status.${event.status}`, { defaultValue: event.status })}
+                </Text>
               </View>
             </View>
             <Text variant="bodyMedium" style={{ opacity: 0.65, marginTop: 4 }}>
-              {event.purpose.charAt(0).toUpperCase() + event.purpose.slice(1)} · Unit {event.unit.unit_number}
+              {t(`event.purposes.${event.purpose}`, {
+                defaultValue: event.purpose.charAt(0).toUpperCase() + event.purpose.slice(1),
+              })} · {t('common.unit', { number: event.unit.unit_number })}
             </Text>
             <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 8 }}>
               {new Date(event.valid_from).toLocaleString()} → {new Date(event.valid_until).toLocaleString()}
@@ -182,7 +189,7 @@ export default function EventDetailScreen() {
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleSmall" style={styles.sectionTitle}>Invite link</Text>
+            <Text variant="titleSmall" style={styles.sectionTitle}>{t('event.detail.inviteLink')}</Text>
             <Text variant="bodySmall" style={styles.urlBox} numberOfLines={1} ellipsizeMode="middle">
               {event.invite_url}
             </Text>
@@ -193,14 +200,14 @@ export default function EventDetailScreen() {
               style={{ marginTop: 12 }}
               contentStyle={{ paddingVertical: 4 }}
               disabled={!isAcceptingGuests}>
-              Share invite
+              {t('event.detail.shareInvite')}
             </Button>
             {!isAcceptingGuests ? (
               <Text variant="bodySmall" style={{ marginTop: 8, color: '#b91c1c' }}>
-                {event.status === 'revoked' ? 'Invite revoked — no new registrations.' :
-                 event.status === 'ended' ? 'Event ended.' :
-                 event.status === 'upcoming' ? "Doesn't accept registrations until the event opens." :
-                 'Reached max guest limit.'}
+                {event.status === 'revoked' ? t('event.detail.notAccepting.revoked') :
+                 event.status === 'ended' ? t('event.detail.notAccepting.ended') :
+                 event.status === 'upcoming' ? t('event.detail.notAccepting.upcoming') :
+                 t('event.detail.notAccepting.maxReached')}
               </Text>
             ) : null}
           </Card.Content>
@@ -210,7 +217,7 @@ export default function EventDetailScreen() {
           <Card.Content>
             <View style={styles.headerRow}>
               <Text variant="titleSmall" style={styles.sectionTitle}>
-                Guests
+                {t('event.detail.guests')}
               </Text>
               <Text variant="bodySmall" style={{ opacity: 0.65 }}>
                 {event.guest_count}{event.max_guests ? ` / ${event.max_guests}` : ''}
@@ -218,7 +225,7 @@ export default function EventDetailScreen() {
             </View>
             {event.guests.length === 0 ? (
               <Text variant="bodySmall" style={{ opacity: 0.5, marginTop: 6 }}>
-                No registrations yet. Share the link to invite people.
+                {t('event.detail.noGuests')}
               </Text>
             ) : (
               event.guests.map((g, i) => {
@@ -238,7 +245,7 @@ export default function EventDetailScreen() {
                       </View>
                       <View style={[styles.statePill, { backgroundColor: state?.bg ?? '#f3f4f6' }]}>
                         <Text style={[styles.stateText, { color: state?.fg ?? '#6b7280' }]}>
-                          {state?.label ?? g.visit_state}
+                          {state ? t(state.label) : g.visit_state}
                         </Text>
                       </View>
                     </View>
@@ -258,7 +265,7 @@ export default function EventDetailScreen() {
             textColor="#b91c1c"
             style={styles.action}
             contentStyle={{ paddingVertical: 4 }}>
-            Revoke invite
+            {t('event.detail.revokeInvite')}
           </Button>
         ) : null}
       </ScrollView>

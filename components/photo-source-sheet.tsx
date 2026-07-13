@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Animated, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export function PhotoSourceSheet({ visible, onClose, onTakePhoto, onPickFromLibrary }: Props) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   // Keep the Modal mounted through the slide-out animation. We unmount only
   // after the exit animation finishes.
@@ -69,7 +71,7 @@ export function PhotoSourceSheet({ visible, onClose, onTakePhoto, onPickFromLibr
           ]}>
           <View style={styles.handle} />
 
-          <Text variant="titleMedium" style={styles.title}>Add Photo</Text>
+          <Text variant="titleMedium" style={styles.title}>{t('common.addPhoto')}</Text>
 
           <Pressable
             style={({ pressed }) => [styles.tile, pressed && styles.tilePressed]}
@@ -78,8 +80,8 @@ export function PhotoSourceSheet({ visible, onClose, onTakePhoto, onPickFromLibr
               <Icon source="camera" size={26} color={PRIMARY} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text variant="bodyLarge" style={styles.tileLabel}>Take Photo</Text>
-              <Text variant="bodySmall" style={styles.tileSub}>Use your camera</Text>
+              <Text variant="bodyLarge" style={styles.tileLabel}>{t('common.takePhoto')}</Text>
+              <Text variant="bodySmall" style={styles.tileSub}>{t('common.useYourCamera')}</Text>
             </View>
             <Icon source="chevron-right" size={20} color="#9ca3af" />
           </Pressable>
@@ -91,8 +93,8 @@ export function PhotoSourceSheet({ visible, onClose, onTakePhoto, onPickFromLibr
               <Icon source="image-multiple" size={26} color={PRIMARY} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text variant="bodyLarge" style={styles.tileLabel}>Choose from Library</Text>
-              <Text variant="bodySmall" style={styles.tileSub}>Pick existing photos</Text>
+              <Text variant="bodyLarge" style={styles.tileLabel}>{t('common.chooseFromLibrary')}</Text>
+              <Text variant="bodySmall" style={styles.tileSub}>{t('common.pickExistingPhotos')}</Text>
             </View>
             <Icon source="chevron-right" size={20} color="#9ca3af" />
           </Pressable>
@@ -100,7 +102,7 @@ export function PhotoSourceSheet({ visible, onClose, onTakePhoto, onPickFromLibr
           <Pressable
             style={({ pressed }) => [styles.cancelBtn, pressed && styles.cancelPressed]}
             onPress={onClose}>
-            <Text variant="bodyLarge" style={styles.cancelText}>Cancel</Text>
+            <Text variant="bodyLarge" style={styles.cancelText}>{t('common.cancel')}</Text>
           </Pressable>
         </Animated.View>
       </View>

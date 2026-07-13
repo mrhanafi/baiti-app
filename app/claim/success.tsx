@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Icon, Text } from 'react-native-paper';
 import Animated, {
@@ -28,7 +29,8 @@ export default function ClaimSuccessScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const firstName = user?.name?.split(' ')[0] ?? 'there';
+  const { t } = useTranslation();
+  const firstName = user?.name?.split(' ')[0];
 
   const params = useLocalSearchParams<{ units?: string }>();
   let units: ClaimedUnit[] = [];
@@ -65,12 +67,12 @@ export default function ClaimSuccessScreen() {
         </Animated.View>
 
         <Text variant="headlineMedium" style={styles.title}>
-          Welcome home, {firstName}!
+          {firstName ? t('claim.welcomeHome', { name: firstName }) : t('claim.welcomeHomeNoName')}
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
           {units.length === 1
-            ? "You're verified. Your home is now linked to your account."
-            : `You're verified. ${units.length} homes linked to your account.`}
+            ? t('claim.verifiedOneHome')
+            : t('claim.verifiedManyHomes', { count: units.length })}
         </Text>
 
         {units.length > 0 ? (
@@ -86,10 +88,10 @@ export default function ClaimSuccessScreen() {
                       {u.property_name}
                     </Text>
                     <Text variant="bodySmall" style={styles.unitMeta}>
-                      Unit {u.unit_number}
+                      {t('common.unit', { number: u.unit_number })}
                     </Text>
                     <Text variant="bodySmall" style={styles.unitMeta}>
-                      Managed by {u.organization_name}
+                      {t('claim.managedBy', { org: u.organization_name })}
                     </Text>
                   </View>
                 </Card.Content>
@@ -103,7 +105,7 @@ export default function ClaimSuccessScreen() {
           onPress={() => router.replace('/(tabs)')}
           style={styles.cta}
           contentStyle={styles.ctaContent}>
-          Take me home
+          {t('claim.takeMeHome')}
         </Button>
       </ScrollView>
     </View>

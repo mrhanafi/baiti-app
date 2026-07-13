@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Icon, Text } from 'react-native-paper';
 import QRCode from 'react-native-qrcode-svg';
@@ -52,6 +53,7 @@ const STATUS_COLOR: Record<string, { bg: string; fg: string }> = {
 
 export default function VisitorPassDetailScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [pass, setPass] = useState<Pass | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,15 +86,15 @@ export default function VisitorPassDetailScreen() {
         { headers: token ? { Authorization: `Bearer ${token}` } : {} },
       );
       if (!(await Sharing.isAvailableAsync())) {
-        Alert.alert('Sharing unavailable on this device.');
+        Alert.alert(t('visitor.detail.sharingUnavailable'));
       } else {
         await Sharing.shareAsync(result.uri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'Send visitor pass',
+          dialogTitle: t('visitor.detail.shareDialogTitle'),
         });
       }
     } catch {
-      Alert.alert('Could not download the PDF. Check your connection.');
+      Alert.alert(t('visitor.detail.pdfError'));
     }
     setPdfLoading(false);
   }
@@ -100,12 +102,12 @@ export default function VisitorPassDetailScreen() {
   async function handleCancel() {
     if (!pass) return;
     Alert.alert(
-      'Cancel this pass?',
-      `${pass.visitor_name} won't be able to enter using this pass.`,
+      t('visitor.detail.cancelTitle'),
+      t('visitor.detail.cancelMessage', { name: pass.visitor_name }),
       [
-        { text: 'Keep pass', style: 'cancel' },
+        { text: t('visitor.detail.keepPass'), style: 'cancel' },
         {
-          text: 'Cancel pass',
+          text: t('visitor.detail.cancelPass'),
           style: 'destructive',
           onPress: async () => {
             setCancelLoading(true);
@@ -113,8 +115,8 @@ export default function VisitorPassDetailScreen() {
               const data = await apiFetch(`/api/v1/me/visitor-passes/${id}/cancel`, { method: 'POST' });
               setPass(data.pass);
             } catch (err) {
-              const msg = err instanceof ApiError ? err.message : 'Could not cancel.';
-              Alert.alert('Cancel failed', msg);
+              const msg = err instanceof ApiError ? err.message : t('visitor.detail.couldNotCancel');
+              Alert.alert(t('visitor.detail.cancelFailed'), msg);
             }
             setCancelLoading(false);
           },
@@ -126,7 +128,7 @@ export default function VisitorPassDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Visitor pass" />
+        <PurpleHeader title={t('visitor.detail.title')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -134,11 +136,11 @@ export default function VisitorPassDetailScreen() {
   if (!pass) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Visitor pass" />
+        <PurpleHeader title={t('visitor.detail.title')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Pass not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('visitor.detail.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -149,18 +151,20 @@ export default function VisitorPassDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Visitor pass" />
+      <PurpleHeader title={t('visitor.detail.title')} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
           <Card.Content style={{ alignItems: 'center' }}>
             <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR[pass.status].bg }]}>
               <Text style={[styles.statusText, { color: STATUS_COLOR[pass.status].fg }]}>
-                {pass.status}
+                {t(`visitor.status.${pass.status}`, { defaultValue: pass.status })}
               </Text>
             </View>
             <Text variant="headlineSmall" style={styles.visitorName}>{pass.visitor_name}</Text>
             <Text variant="bodyMedium" style={styles.purposeLine}>
-              {pass.purpose.charAt(0).toUpperCase() + pass.purpose.slice(1)}
+              {t(`visitor.purposes.${pass.purpose}`, {
+                defaultValue: pass.purpose.charAt(0).toUpperCase() + pass.purpose.slice(1),
+              })}
               {pass.vehicle_plate ? `  ·  ${pass.vehicle_plate}` : ''}
             </Text>
 
@@ -168,14 +172,16 @@ export default function VisitorPassDetailScreen() {
               <View style={styles.qrWrap}>
                 <QRCode value={pass.qr_token} size={200} backgroundColor="#fff" />
                 <Text variant="bodySmall" style={styles.qrHint}>
-                  Show this at the guard post.
+                  {t('visitor.detail.qrHint')}
                 </Text>
               </View>
             ) : (
               <View style={styles.qrPlaceholder}>
                 <Icon source="qrcode-remove" size={48} color="#9ca3af" />
                 <Text variant="bodySmall" style={{ opacity: 0.5, marginTop: 8 }}>
-                  {pass.status === 'cancelled' ? 'Pass cancelled.' : 'Pass expired.'}
+                  {pass.status === 'cancelled'
+                    ? t('visitor.detail.passCancelled')
+                    : t('visitor.detail.passExpired')}
                 </Text>
               </View>
             )}
@@ -184,30 +190,33 @@ export default function VisitorPassDetailScreen() {
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleSmall" style={styles.sectionTitle}>Pass details</Text>
-            <Row label="Going to" value={`Unit ${pass.unit.unit_number}\n${pass.unit.property_name ?? ''}`} />
-            <Row label="Valid from" value={new Date(pass.valid_from).toLocaleString()} />
-            <Row label="Valid until" value={new Date(pass.valid_until).toLocaleString()} />
-            {pass.visitor_phone ? <Row label="Phone" value={pass.visitor_phone} /> : null}
-            {pass.visitor_ic ? <Row label="IC" value={pass.visitor_ic} /> : null}
-            {pass.organization.legal_name ? <Row label="JMB" value={pass.organization.legal_name} /> : null}
+            <Text variant="titleSmall" style={styles.sectionTitle}>{t('visitor.detail.passDetails')}</Text>
+            <Row
+              label={t('visitor.detail.goingTo')}
+              value={`${t('common.unit', { number: pass.unit.unit_number })}\n${pass.unit.property_name ?? ''}`}
+            />
+            <Row label={t('visitor.detail.validFrom')} value={new Date(pass.valid_from).toLocaleString()} />
+            <Row label={t('visitor.detail.validUntil')} value={new Date(pass.valid_until).toLocaleString()} />
+            {pass.visitor_phone ? <Row label={t('visitor.detail.phone')} value={pass.visitor_phone} /> : null}
+            {pass.visitor_ic ? <Row label={t('visitor.detail.ic')} value={pass.visitor_ic} /> : null}
+            {pass.organization.legal_name ? <Row label={t('visitor.detail.jmb')} value={pass.organization.legal_name} /> : null}
           </Card.Content>
         </Card>
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleSmall" style={styles.sectionTitle}>Visit history</Text>
+            <Text variant="titleSmall" style={styles.sectionTitle}>{t('visitor.detail.visitHistory')}</Text>
             {pass.entries.length === 0 ? (
               <Text variant="bodySmall" style={{ opacity: 0.5 }}>
-                No visits yet. The guard will scan this pass when your visitor arrives.
+                {t('visitor.detail.noVisits')}
               </Text>
             ) : (
               pass.entries.map((e, i) => {
                 const label = e.decision === 'denied'
-                  ? 'Denied entry'
+                  ? t('visitor.detail.deniedEntry')
                   : e.kind === 'entry'
-                    ? 'Entered'
-                    : 'Exited';
+                    ? t('visitor.detail.entered')
+                    : t('visitor.detail.exited');
                 const icon = e.decision === 'denied'
                   ? 'close-circle'
                   : e.kind === 'entry'
@@ -225,11 +234,11 @@ export default function VisitorPassDetailScreen() {
                       <Icon source={icon} size={22} color={color} />
                       <View style={{ flex: 1, marginLeft: 8 }}>
                         <Text variant="bodyMedium" style={{ fontWeight: '600' }}>
-                          {label}{e.visit_tag ? `  ·  tag ${e.visit_tag}` : ''}
+                          {label}{e.visit_tag ? `  ·  ${t('visitor.detail.visitTag', { tag: e.visit_tag })}` : ''}
                         </Text>
                         <Text variant="bodySmall" style={{ opacity: 0.65 }}>
                           {new Date(e.scanned_at).toLocaleString()}
-                          {e.scanned_by ? ` · by ${e.scanned_by}` : ''}
+                          {e.scanned_by ? ` · ${t('visitor.detail.scannedBy', { name: e.scanned_by })}` : ''}
                         </Text>
                         {e.denial_reason ? (
                           <Text variant="bodySmall" style={{ color: '#b91c1c', marginTop: 2 }}>
@@ -254,7 +263,7 @@ export default function VisitorPassDetailScreen() {
             disabled={pdfLoading}
             style={styles.action}
             contentStyle={styles.actionContent}>
-            Share as PDF
+            {t('visitor.detail.shareAsPdf')}
           </Button>
         ) : null}
 
@@ -267,7 +276,7 @@ export default function VisitorPassDetailScreen() {
             disabled={cancelLoading}
             textColor="#b91c1c"
             style={styles.action}>
-            Cancel pass
+            {t('visitor.detail.cancelPass')}
           </Button>
         ) : null}
       </ScrollView>

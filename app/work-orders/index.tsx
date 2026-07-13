@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, IconButton, Text } from 'react-native-paper';
 
@@ -7,6 +8,7 @@ import { PurpleHeader } from '@/components/purple-header';
 import { TabletContainer } from '@/components/tablet-container';
 import { apiFetch } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
+import { setLocale } from '@/lib/i18n';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
@@ -26,19 +28,20 @@ export type WorkOrder = {
   organization: { id: string | null; legal_name: string | null };
 };
 
+// `label` values are i18n keys — render with t(s.label).
 export const WO_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
-  assigned: { bg: '#e0e7ff', fg: '#4338ca', label: 'Assigned' },
-  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
-  on_hold: { bg: '#fde8e8', fg: '#c81e1e', label: 'On hold' },
-  completed: { bg: '#dcfce7', fg: '#15803d', label: 'Completed' },
-  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+  assigned: { bg: '#e0e7ff', fg: '#4338ca', label: 'status.assigned' },
+  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
+  on_hold: { bg: '#fde8e8', fg: '#c81e1e', label: 'status.onHold' },
+  completed: { bg: '#dcfce7', fg: '#15803d', label: 'status.completed' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.closed' },
 };
 
 export const WO_PRIORITY: Record<string, { fg: string; label: string }> = {
-  critical: { fg: '#b91c1c', label: 'CRITICAL' },
-  high: { fg: '#c2410c', label: 'HIGH' },
-  normal: { fg: '#6b7280', label: 'Normal' },
-  low: { fg: '#9ca3af', label: 'Low' },
+  critical: { fg: '#b91c1c', label: 'status.critical' },
+  high: { fg: '#c2410c', label: 'status.high' },
+  normal: { fg: '#6b7280', label: 'status.normal' },
+  low: { fg: '#9ca3af', label: 'status.low' },
 };
 
 type WoStats = { ongoing: number; completed_this_month: number; overdue: number };
@@ -46,6 +49,7 @@ type WoStats = { ongoing: number; completed_this_month: number; overdue: number 
 export default function WorkOrderListScreen() {
   const router = useRouter();
   const { user, signOut } = useAuth();
+  const { t, i18n } = useTranslation();
   const [stats, setStats] = useState<WoStats | null>(null);
   const [ongoing, setOngoing] = useState<WorkOrder[]>([]);
   const [done, setDone] = useState<WorkOrder[]>([]);
@@ -91,20 +95,21 @@ export default function WorkOrderListScreen() {
               <Text style={styles.jmbBadgeText}>{wo.organization.legal_name ?? '—'}</Text>
             </View>
             <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-              <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+              <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
             </View>
           </View>
           <Text variant="titleMedium" style={styles.title}>{wo.title}</Text>
           <Text variant="bodySmall" style={styles.meta}>
             {wo.location ?? '—'}
-            {wo.unit_number ? ` · Unit ${wo.unit_number}` : ''}
+            {wo.unit_number ? ` · ${t('common.unit', { number: wo.unit_number })}` : ''}
             {wo.category ? ` · ${wo.category}` : ''}
           </Text>
           <View style={styles.bottomRow}>
-            <Text variant="bodySmall" style={[styles.priority, { color: p.fg }]}>{p.label}</Text>
+            <Text variant="bodySmall" style={[styles.priority, { color: p.fg }]}>{t(p.label)}</Text>
             {wo.due_date ? (
               <Text variant="bodySmall" style={[styles.meta, wo.is_delayed && styles.overdue]}>
-                Due {new Date(wo.due_date).toLocaleDateString()}{wo.is_delayed ? ' · OVERDUE' : ''}
+                {t('workOrders.due', { date: new Date(wo.due_date).toLocaleDateString() })}
+                {wo.is_delayed ? ` · ${t('workOrders.overdueTag')}` : ''}
               </Text>
             ) : null}
           </View>
@@ -116,10 +121,21 @@ export default function WorkOrderListScreen() {
   return (
     <View style={styles.container}>
       <PurpleHeader
-        title="My Work Orders"
+        title={t('workOrders.title')}
         showBack={!isStaffOnly}
         right={isStaffOnly ? (
-          <IconButton icon="logout" iconColor="#fff" size={22} onPress={() => signOut()} />
+          <View style={{ flexDirection: 'row' }}>
+            <IconButton
+              icon="translate"
+              iconColor="#fff"
+              size={22}
+              onPress={() => {
+                const next = i18n.language === 'en' ? 'ms' : 'en';
+                void setLocale(next);
+              }}
+            />
+            <IconButton icon="logout" iconColor="#fff" size={22} onPress={() => signOut()} />
+          </View>
         ) : undefined}
       />
 
@@ -135,29 +151,29 @@ export default function WorkOrderListScreen() {
             <View style={styles.statsRow}>
               <View style={styles.statBox}>
                 <Text variant="headlineSmall" style={styles.statValue}>{stats.ongoing}</Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Ongoing</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('workOrders.ongoing')}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text variant="headlineSmall" style={[styles.statValue, { color: '#15803d' }]}>
                   {stats.completed_this_month}
                 </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Done this month</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('workOrders.doneThisMonth')}</Text>
               </View>
               <View style={styles.statBox}>
                 <Text variant="headlineSmall" style={[styles.statValue, stats.overdue > 0 && { color: '#b91c1c' }]}>
                   {stats.overdue}
                 </Text>
-                <Text variant="bodySmall" style={styles.statLabel}>Overdue</Text>
+                <Text variant="bodySmall" style={styles.statLabel}>{t('workOrders.overdue')}</Text>
               </View>
             </View>
           ) : null}
 
-          <Text variant="titleSmall" style={styles.sectionTitle}>Ongoing</Text>
+          <Text variant="titleSmall" style={styles.sectionTitle}>{t('workOrders.ongoing')}</Text>
           {ongoing.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Icon source="clipboard-check-outline" size={36} color="#9ca3af" />
               <Text variant="bodySmall" style={styles.emptyText}>
-                No work orders assigned to you right now.
+                {t('workOrders.emptyOngoing')}
               </Text>
             </View>
           ) : (
@@ -165,12 +181,12 @@ export default function WorkOrderListScreen() {
           )}
 
           <Text variant="titleSmall" style={[styles.sectionTitle, { marginTop: 20 }]}>
-            Done (last 30 days)
+            {t('workOrders.doneLast30Days')}
           </Text>
           {done.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Icon source="check-circle-outline" size={36} color="#9ca3af" />
-              <Text variant="bodySmall" style={styles.emptyText}>Nothing completed yet.</Text>
+              <Text variant="bodySmall" style={styles.emptyText}>{t('workOrders.emptyDone')}</Text>
             </View>
           ) : (
             done.map(renderCard)

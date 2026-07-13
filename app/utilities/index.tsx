@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,17 +29,19 @@ type Response = {
   total: number;
 };
 
+// Values are i18n keys — render with t(PRICING_LABEL[...]).
 const PRICING_LABEL: Record<string, string> = {
-  flat_all: 'Flat',
-  flat_per_unit_type: 'Per unit type',
-  per_sqft: 'Per sqft',
-  per_unit_override: 'Custom for your unit',
-  percentage_of: '% of another charge',
+  flat_all: 'utilities.pricing.flat',
+  flat_per_unit_type: 'utilities.pricing.perUnitType',
+  per_sqft: 'utilities.pricing.perSqft',
+  per_unit_override: 'utilities.pricing.customForUnit',
+  percentage_of: 'utilities.pricing.percentageOf',
 };
 
 export default function UtilitiesScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [selectedUnitId, setSelectedUnitId] = useState<string | null>(null);
   const [data, setData] = useState<Response | null>(null);
@@ -84,7 +87,7 @@ export default function UtilitiesScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Utilities" />
+      <PurpleHeader title={t('utilities.title')} />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -98,9 +101,9 @@ export default function UtilitiesScreen() {
                   <Icon source="home-city-outline" size={28} color={PRIMARY} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text variant="bodySmall" style={styles.unitLabel}>Showing charges for</Text>
+                  <Text variant="bodySmall" style={styles.unitLabel}>{t('utilities.showingChargesFor')}</Text>
                   <Text variant="titleMedium" style={{ fontWeight: '600' }}>
-                    Unit {data.unit.unit_number}
+                    {t('common.unit', { number: data.unit.unit_number })}
                   </Text>
                   {data.unit.property_name ? (
                     <Text variant="bodySmall" style={{ opacity: 0.65 }}>
@@ -110,7 +113,7 @@ export default function UtilitiesScreen() {
                 </View>
                 {hasMultipleUnits ? (
                   <View style={styles.switchHint}>
-                    <Text style={styles.switchHintText}>Switch unit on Home</Text>
+                    <Text style={styles.switchHintText}>{t('utilities.switchUnitOnHome')}</Text>
                   </View>
                 ) : null}
               </Card.Content>
@@ -123,12 +126,10 @@ export default function UtilitiesScreen() {
             <View style={styles.center}>
               <Icon source="lightning-bolt-outline" size={56} color="#9ca3af" />
               <Text variant="titleMedium" style={{ marginTop: 12, opacity: 0.8 }}>
-                No utility charges yet
+                {t('utilities.emptyTitle')}
               </Text>
               <Text variant="bodySmall" style={styles.emptyHint}>
-                Your JMB hasn't set up any utility charges for this unit.
-                Water, internet and electricity charges will appear here once
-                they activate them.
+                {t('utilities.emptyHint')}
               </Text>
             </View>
           ) : (
@@ -147,7 +148,7 @@ export default function UtilitiesScreen() {
                         </Text>
                       ) : null}
                       <Text variant="bodySmall" style={styles.methodLabel}>
-                        {PRICING_LABEL[c.pricing_method] ?? c.pricing_method}
+                        {PRICING_LABEL[c.pricing_method] ? t(PRICING_LABEL[c.pricing_method]) : c.pricing_method}
                       </Text>
                     </View>
                     <Text variant="titleMedium" style={styles.amount}>
@@ -160,9 +161,9 @@ export default function UtilitiesScreen() {
               <Card style={styles.totalCard}>
                 <Card.Content style={styles.totalContent}>
                   <View style={{ flex: 1, paddingRight: 12 }}>
-                    <Text style={styles.totalLabel}>Total per month</Text>
+                    <Text style={styles.totalLabel}>{t('utilities.totalPerMonth')}</Text>
                     <Text style={styles.totalSubtitle}>
-                      These appear on your monthly maintenance invoice.
+                      {t('utilities.totalSubtitle')}
                     </Text>
                   </View>
                   <Text style={styles.totalAmount}>

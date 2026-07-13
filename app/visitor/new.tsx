@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 
@@ -16,23 +17,24 @@ const PRIMARY_TINT = '#EEEDFD';
 const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 const PURPOSES = [
-  { value: 'cleaner', label: 'Cleaner' },
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'family', label: 'Family' },
-  { value: 'contractor', label: 'Contractor' },
-  { value: 'services', label: 'Services' },
-  { value: 'other', label: 'Other' },
+  { value: 'cleaner', labelKey: 'visitor.purposes.cleaner' },
+  { value: 'delivery', labelKey: 'visitor.purposes.delivery' },
+  { value: 'family', labelKey: 'visitor.purposes.family' },
+  { value: 'contractor', labelKey: 'visitor.purposes.contractor' },
+  { value: 'services', labelKey: 'visitor.purposes.services' },
+  { value: 'other', labelKey: 'visitor.purposes.other' },
 ];
 
 const PRESETS = [
-  { key: 'today4h', label: 'Next 4 hrs' },
-  { key: 'tomorrow', label: 'Tomorrow (all day)' },
-  { key: 'custom', label: 'Custom range' },
+  { key: 'today4h', labelKey: 'visitor.new.presets.next4h' },
+  { key: 'tomorrow', labelKey: 'visitor.new.presets.tomorrow' },
+  { key: 'custom', labelKey: 'visitor.new.presets.customRange' },
 ];
 
 export default function NewVisitorScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   // Bound home for this pass — read-only. Sourced from the Home tab's
   // active-home AsyncStorage key. To file for a different home, the user
@@ -150,11 +152,11 @@ export default function NewVisitorScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         setFieldErrors(err.body?.errors ?? {});
-        setError('Please fix the highlighted fields.');
+        setError(t('visitor.new.errors.fixHighlighted'));
       } else if (err instanceof ApiError) {
-        setError(`Failed (${err.status}).`);
+        setError(t('visitor.new.errors.failedStatus', { status: err.status }));
       } else {
-        setError('Could not reach the server.');
+        setError(t('visitor.new.errors.network'));
       }
     }
     setLoading(false);
@@ -168,14 +170,14 @@ export default function NewVisitorScreen() {
     // No home registered yet — can't create passes.
     return (
       <View style={styles.container}>
-        <PurpleHeader title="New visitor" />
+        <PurpleHeader title={t('visitor.new.title')} />
         <View style={styles.empty}>
           <Icon source="home-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            Verify your home with your IC before creating visitor passes.
+            {t('visitor.new.verifyFirst')}
           </Text>
           <Button mode="contained" onPress={() => router.replace('/claim')} style={{ marginTop: 16 }}>
-            Verify with IC
+            {t('visitor.new.verifyWithIc')}
           </Button>
         </View>
       </View>
@@ -184,7 +186,7 @@ export default function NewVisitorScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="New visitor" />
+      <PurpleHeader title={t('visitor.new.title')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -204,10 +206,10 @@ export default function NewVisitorScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                  {boundHome.property_name ?? 'Your home'}
+                  {boundHome.property_name ?? t('visitor.new.yourHome')}
                 </Text>
                 <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                  Unit {boundHome.unit_number}
+                  {t('common.unit', { number: boundHome.unit_number })}
                 </Text>
               </View>
             </Card.Content>
@@ -216,10 +218,10 @@ export default function NewVisitorScreen() {
 
         <Card style={styles.formCard}>
           <Card.Content>
-            <Text variant="titleSmall" style={styles.sectionFirst}>Visitor</Text>
+            <Text variant="titleSmall" style={styles.sectionFirst}>{t('visitor.new.sectionVisitor')}</Text>
 
             <TextInput
-              label="Visitor name *"
+              label={t('visitor.new.visitorName')}
               value={visitorName}
               onChangeText={setVisitorName}
               mode="outlined"
@@ -229,28 +231,28 @@ export default function NewVisitorScreen() {
             {fieldError('visitor_name') ? <HelperText type="error" visible>{fieldError('visitor_name')}</HelperText> : null}
 
             <TextInput
-              label="Phone"
+              label={t('visitor.new.phone')}
               value={visitorPhone}
               onChangeText={(v) => setVisitorPhone(v.replace(/\D/g, ''))}
               keyboardType="phone-pad"
               mode="outlined"
               style={styles.input}
-              placeholder="121234567"
+              placeholder={t('visitor.new.phonePlaceholder')}
               left={<TextInput.Affix text="+60" />}
             />
 
             <TextInput
-              label="IC (optional)"
+              label={t('visitor.new.icOptional')}
               value={visitorIc}
               onChangeText={(v) => setVisitorIc(formatMyIc(v))}
               keyboardType="number-pad"
               maxLength={14}
               mode="outlined"
               style={styles.input}
-              placeholder="901231-14-5678"
+              placeholder={t('visitor.new.icPlaceholder')}
             />
 
-            <Text variant="titleSmall" style={styles.section}>Purpose</Text>
+            <Text variant="titleSmall" style={styles.section}>{t('visitor.new.sectionPurpose')}</Text>
             <View style={styles.purposeGrid}>
               {PURPOSES.map((p) => (
                 <Pressable
@@ -258,7 +260,7 @@ export default function NewVisitorScreen() {
                   onPress={() => setPurpose(p.value)}
                   style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
                   <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
-                    {p.label}
+                    {t(p.labelKey)}
                   </Text>
                 </Pressable>
               ))}
@@ -271,43 +273,42 @@ export default function NewVisitorScreen() {
                 <Icon source={tagRenovation ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={PRIMARY} />
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyMedium" style={{ fontWeight: '600' }}>
-                    Renovation contractor
+                    {t('visitor.new.renovationContractor')}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65 }}>
-                    Links this pass to your active permit ({activePermit.contractor_name}) —
-                    the guard sees it at the gate.
+                    {t('visitor.new.renovationHint', { contractor: activePermit.contractor_name })}
                   </Text>
                 </View>
               </Pressable>
             ) : null}
 
-            <Text variant="titleSmall" style={styles.section}>Vehicle</Text>
+            <Text variant="titleSmall" style={styles.section}>{t('visitor.new.sectionVehicle')}</Text>
             <TextInput
-              label="Plate number (optional)"
+              label={t('visitor.new.plateOptional')}
               value={vehiclePlate}
-              onChangeText={(t) => setVehiclePlate(t.toUpperCase())}
+              onChangeText={(v) => setVehiclePlate(v.toUpperCase())}
               autoCapitalize="characters"
               mode="outlined"
               style={styles.input}
-              placeholder="PJW1234"
+              placeholder={t('visitor.new.platePlaceholder')}
             />
 
-            <Text variant="titleSmall" style={styles.section}>When</Text>
+            <Text variant="titleSmall" style={styles.section}>{t('visitor.new.sectionWhen')}</Text>
             <SegmentedButtons
               value={preset}
               onValueChange={(v) => setPreset(v as typeof preset)}
-              buttons={PRESETS.map((p) => ({ value: p.key, label: p.label }))}
+              buttons={PRESETS.map((p) => ({ value: p.key, label: t(p.labelKey) }))}
               style={{ marginBottom: 12 }}
             />
 
             {preset === 'custom' ? (
               <View style={styles.customRow}>
                 <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
-                  <Text variant="labelSmall" style={styles.label}>From</Text>
+                  <Text variant="labelSmall" style={styles.label}>{t('visitor.new.from')}</Text>
                   <Text>{validFrom.toLocaleDateString()}</Text>
                 </Pressable>
                 <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
-                  <Text variant="labelSmall" style={styles.label}>Until</Text>
+                  <Text variant="labelSmall" style={styles.label}>{t('visitor.new.until')}</Text>
                   <Text>{validUntil.toLocaleDateString()}</Text>
                 </Pressable>
               </View>
@@ -369,7 +370,7 @@ export default function NewVisitorScreen() {
           disabled={submitDisabled}
           style={styles.submit}
           contentStyle={styles.submitContent}>
-          Create pass
+          {t('visitor.new.createPass')}
         </Button>
       </ScrollView>
       </KeyboardAvoidingView>

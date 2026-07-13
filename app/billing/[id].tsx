@@ -4,6 +4,7 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import * as Sharing from 'expo-sharing';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Divider, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,6 +41,7 @@ export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -79,10 +81,10 @@ export default function InvoiceDetailScreen() {
         // Refetch when user returns — webhook may have updated status
         await load();
       } else {
-        Alert.alert('Payment error', 'Could not start payment. Try again.');
+        Alert.alert(t('bills.paymentErrorTitle'), t('bills.paymentErrorBody'));
       }
     } catch (e: any) {
-      Alert.alert('Payment error', e?.message ?? 'Could not start payment.');
+      Alert.alert(t('bills.paymentErrorTitle'), e?.message ?? t('bills.couldNotStartPayment'));
     }
     setPaying(false);
   }
@@ -99,14 +101,14 @@ export default function InvoiceDetailScreen() {
       if (canShare) {
         await Sharing.shareAsync(localUri, {
           mimeType: 'application/pdf',
-          dialogTitle: 'Receipt — '.concat(invoice.invoice_number),
+          dialogTitle: t('bills.receiptDialogTitle', { number: invoice.invoice_number }),
           UTI: 'com.adobe.pdf',
         });
       } else {
-        Alert.alert('Receipt downloaded', `Saved to: ${localUri}`);
+        Alert.alert(t('bills.receiptDownloaded'), t('bills.savedTo', { path: localUri }));
       }
     } catch (e: any) {
-      Alert.alert('Download failed', e?.message ?? 'Could not download receipt.');
+      Alert.alert(t('bills.downloadFailed'), e?.message ?? t('bills.couldNotDownload'));
     }
     setDownloading(false);
   }
@@ -137,7 +139,7 @@ export default function InvoiceDetailScreen() {
       if (!dirUri) {
         const permission = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
         if (!permission.granted) {
-          Alert.alert('Save cancelled', 'No folder was selected.');
+          Alert.alert(t('bills.saveCancelled'), t('bills.noFolderSelected'));
           return;
         }
         dirUri = permission.directoryUri;
@@ -159,9 +161,9 @@ export default function InvoiceDetailScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      Alert.alert('Saved', `${filename} saved to your chosen folder.`);
+      Alert.alert(t('bills.saved'), t('bills.savedToFolder', { filename }));
     } catch (e: any) {
-      Alert.alert('Save failed', e?.message ?? 'Could not save receipt.');
+      Alert.alert(t('bills.saveFailed'), e?.message ?? t('bills.couldNotSave'));
     }
     setSaving(false);
   }
@@ -169,7 +171,7 @@ export default function InvoiceDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Invoice" />
+        <PurpleHeader title={t('bills.invoice')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -177,21 +179,22 @@ export default function InvoiceDetailScreen() {
   if (!invoice) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Invoice" />
+        <PurpleHeader title={t('bills.invoice')} />
         <View style={styles.center}>
-          <Text>Invoice not found.</Text>
+          <Text>{t('bills.invoiceNotFound')}</Text>
         </View>
       </View>
     );
   }
 
   const isPayable = invoice.status === 'issued' || invoice.status === 'overdue';
+  // `label` values are i18n keys — render with t(sc.label).
   const statusColors: Record<string, { bg: string; fg: string; label: string }> = {
-    issued: { bg: '#fef3c7', fg: '#92400e', label: 'Unpaid' },
-    overdue: { bg: '#fee2e2', fg: '#b91c1c', label: 'Overdue' },
-    paid: { bg: '#d1fae5', fg: '#065f46', label: 'Paid' },
-    cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'Cancelled' },
-    draft: { bg: '#f3f4f6', fg: '#6b7280', label: 'Draft' },
+    issued: { bg: '#fef3c7', fg: '#92400e', label: 'status.unpaid' },
+    overdue: { bg: '#fee2e2', fg: '#b91c1c', label: 'status.overdue' },
+    paid: { bg: '#d1fae5', fg: '#065f46', label: 'status.paid' },
+    cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.cancelled' },
+    draft: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.draft' },
   };
   const sc = statusColors[invoice.status];
 
@@ -208,23 +211,23 @@ export default function InvoiceDetailScreen() {
             <Text style={styles.amountLabel}>{invoice.period_label}</Text>
             <Text style={styles.amountValue}>RM {invoice.total.toFixed(2)}</Text>
             <View style={[styles.pill, { backgroundColor: sc.bg }]}>
-              <Text style={[styles.pillText, { color: sc.fg }]}>{sc.label}</Text>
+              <Text style={[styles.pillText, { color: sc.fg }]}>{t(sc.label)}</Text>
             </View>
             {invoice.status === 'overdue' ? (
               <Text style={styles.overdueText}>
-                ⚠ {invoice.days_overdue} day{invoice.days_overdue === 1 ? '' : 's'} overdue
+                {t('bills.daysOverdue', { count: invoice.days_overdue })}
               </Text>
             ) : invoice.status === 'paid' && invoice.paid_at ? (
-              <Text style={styles.paidText}>Paid on {new Date(invoice.paid_at).toLocaleDateString()}</Text>
+              <Text style={styles.paidText}>{t('bills.paidOn', { date: new Date(invoice.paid_at).toLocaleDateString() })}</Text>
             ) : (
-              <Text style={styles.dueText}>Due {new Date(invoice.due_date).toLocaleDateString()}</Text>
+              <Text style={styles.dueText}>{t('bills.due', { date: new Date(invoice.due_date).toLocaleDateString() })}</Text>
             )}
           </View>
 
           {/* Line items */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Breakdown</Text>
+              <Text style={styles.sectionTitle}>{t('bills.breakdown')}</Text>
               {invoice.line_items.map((li, i) => (
                 <View key={i}>
                   <View style={styles.lineItem}>
@@ -241,7 +244,7 @@ export default function InvoiceDetailScreen() {
               ))}
               <Divider style={[styles.divider, { marginVertical: 12 }]} />
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalLabel}>{t('bills.total')}</Text>
                 <Text style={styles.totalAmount}>RM {invoice.total.toFixed(2)}</Text>
               </View>
             </Card.Content>
@@ -250,11 +253,11 @@ export default function InvoiceDetailScreen() {
           {/* Details */}
           <Card style={styles.card}>
             <Card.Content>
-              <Text style={styles.sectionTitle}>Details</Text>
-              <DetailRow label="Issued by" value={invoice.jmb_name ?? '—'} />
-              <DetailRow label="Unit" value={invoice.unit_number ?? '—'} />
-              <DetailRow label="Issue date" value={new Date(invoice.issue_date).toLocaleDateString()} />
-              <DetailRow label="Due date" value={new Date(invoice.due_date).toLocaleDateString()} />
+              <Text style={styles.sectionTitle}>{t('bills.details')}</Text>
+              <DetailRow label={t('bills.issuedBy')} value={invoice.jmb_name ?? '—'} />
+              <DetailRow label={t('bills.unit')} value={invoice.unit_number ?? '—'} />
+              <DetailRow label={t('bills.issueDate')} value={new Date(invoice.issue_date).toLocaleDateString()} />
+              <DetailRow label={t('bills.dueDate')} value={new Date(invoice.due_date).toLocaleDateString()} />
             </Card.Content>
           </Card>
 
@@ -262,11 +265,11 @@ export default function InvoiceDetailScreen() {
           {invoice.payments.length > 0 ? (
             <Card style={styles.card}>
               <Card.Content>
-                <Text style={styles.sectionTitle}>Payment history</Text>
+                <Text style={styles.sectionTitle}>{t('bills.paymentHistory')}</Text>
                 {invoice.payments.map((p, i) => (
                   <View key={i} style={styles.paymentRow}>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.payMethod}>{p.gateway === 'manual' ? 'Offline / Bank transfer' : p.gateway.toUpperCase()}</Text>
+                      <Text style={styles.payMethod}>{p.gateway === 'manual' ? t('bills.offlineBankTransfer') : p.gateway.toUpperCase()}</Text>
                       {p.paid_at ? (
                         <Text style={styles.payDate}>{new Date(p.paid_at).toLocaleString()}</Text>
                       ) : null}
@@ -296,7 +299,7 @@ export default function InvoiceDetailScreen() {
             onPress={handlePay}
             style={styles.payButton}
             contentStyle={{ paddingVertical: 6 }}>
-            Pay RM {invoice.total.toFixed(2)}
+            {t('bills.payAmount', { amount: invoice.total.toFixed(2) })}
           </Button>
         </View>
       ) : invoice.status === 'paid' ? (
@@ -310,7 +313,7 @@ export default function InvoiceDetailScreen() {
               onPress={handleSaveToDownloads}
               style={styles.payButton}
               contentStyle={{ paddingVertical: 6 }}>
-              Save to Downloads
+              {t('bills.saveToDownloads')}
             </Button>
           ) : null}
           <Button
@@ -321,7 +324,7 @@ export default function InvoiceDetailScreen() {
             onPress={handleShareReceipt}
             style={[styles.payButton, Platform.OS === 'android' && { marginTop: 8 }]}
             contentStyle={{ paddingVertical: 6 }}>
-            {Platform.OS === 'android' ? 'Share' : 'Download receipt'}
+            {Platform.OS === 'android' ? t('bills.share') : t('bills.downloadReceipt')}
           </Button>
         </View>
       ) : null}

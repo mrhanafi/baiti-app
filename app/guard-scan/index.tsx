@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, HelperText, Icon, IconButton, Text, TextInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,7 @@ type SearchResult = {
 export default function GuardScanScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(true);
@@ -63,22 +65,22 @@ export default function GuardScanScreen() {
 
   // Find by physical tag (e.g. visitor returns card "042" at exit time).
   async function handleTagLookup() {
-    const t = tagQuery.trim();
-    if (!t) return;
+    const tagValue = tagQuery.trim();
+    if (!tagValue) return;
     setTagBusy(true);
     try {
-      const data = await apiFetch(`/api/v1/guard/passes/by-tag?tag=${encodeURIComponent(t)}`);
+      const data = await apiFetch(`/api/v1/guard/passes/by-tag?tag=${encodeURIComponent(tagValue)}`);
       const passes = data.passes ?? [];
       if (passes.length === 0) {
-        Alert.alert('No match', `No open visit found with tag ${t}.`);
+        Alert.alert(t('guard.scan.noMatch'), t('guard.scan.noMatchBody', { tag: tagValue }));
       } else if (passes.length === 1) {
         setTagQuery('');
         router.push({ pathname: '/guard-pass/[id]', params: { id: passes[0].id } });
       } else {
         // Rare: tag reused. Show a picker via simple Alert.
         Alert.alert(
-          'Multiple matches',
-          `Found ${passes.length} visits with tag ${t}. Pick one.`,
+          t('guard.scan.multipleMatches'),
+          t('guard.scan.multipleMatchesBody', { count: passes.length, tag: tagValue }),
           passes.map((p: SearchResult) => ({
             text: p.visitor_name,
             onPress: () => {
@@ -89,7 +91,7 @@ export default function GuardScanScreen() {
         );
       }
     } catch {
-      Alert.alert('Lookup failed', 'Could not search by tag.');
+      Alert.alert(t('guard.scan.lookupFailed'), t('guard.scan.lookupFailedBody'));
     }
     setTagBusy(false);
   }
@@ -109,8 +111,8 @@ export default function GuardScanScreen() {
       });
       router.push({ pathname: '/guard-pass/[id]', params: { id: data.pass.id } });
     } catch (err) {
-      const msg = err instanceof ApiError ? (err.body?.errors?.qr_token?.[0] ?? err.message) : 'Could not look up.';
-      Alert.alert('Scan failed', msg, [{ text: 'OK', onPress: () => setScanning(true) }]);
+      const msg = err instanceof ApiError ? (err.body?.errors?.qr_token?.[0] ?? err.message) : t('guard.scan.couldNotLookUp');
+      Alert.alert(t('guard.scan.scanFailed'), msg, [{ text: t('guard.ok'), onPress: () => setScanning(true) }]);
     }
   }
 
@@ -124,7 +126,7 @@ export default function GuardScanScreen() {
           onPress={() => router.back()}
           style={styles.backBtn}
         />
-        <Text style={styles.title}>Scan visitor</Text>
+        <Text style={styles.title}>{t('guard.scan.title')}</Text>
       </View>
 
       <View style={styles.walkInRow}>
@@ -134,7 +136,7 @@ export default function GuardScanScreen() {
           onPress={() => router.push('/walk-in')}
           style={styles.walkInBtn}
           contentStyle={{ paddingVertical: 2 }}>
-          Walk-in visitor
+          {t('guard.scan.walkInVisitor')}
         </Button>
       </View>
 
@@ -145,10 +147,10 @@ export default function GuardScanScreen() {
           <View style={styles.fallback}>
             <Icon source="camera-off" size={48} color="#9ca3af" />
             <Text variant="bodyMedium" style={{ marginTop: 12, textAlign: 'center' }}>
-              Camera permission is needed to scan QR codes.
+              {t('guard.scan.cameraPermission')}
             </Text>
             <Button onPress={requestPermission} mode="contained" style={{ marginTop: 16 }}>
-              Grant permission
+              {t('guard.scan.grantPermission')}
             </Button>
           </View>
         ) : (
@@ -163,13 +165,13 @@ export default function GuardScanScreen() {
       </View>
 
       <View style={styles.searchPanel}>
-        <Text variant="labelMedium" style={styles.searchLabel}>Visitor exiting? Find by tag</Text>
+        <Text variant="labelMedium" style={styles.searchLabel}>{t('guard.scan.findByTag')}</Text>
         <View style={styles.tagRow}>
           <TextInput
             value={tagQuery}
             onChangeText={setTagQuery}
             mode="outlined"
-            placeholder="e.g. 042"
+            placeholder={t('guard.scan.tagPlaceholder')}
             autoCapitalize="characters"
             style={{ flex: 1 }}
             onSubmitEditing={handleTagLookup}
@@ -182,21 +184,21 @@ export default function GuardScanScreen() {
             loading={tagBusy}
             disabled={tagBusy || !tagQuery.trim()}
             contentStyle={{ paddingVertical: 4 }}>
-            Find
+            {t('guard.scan.find')}
           </Button>
         </View>
 
-        <Text variant="labelMedium" style={[styles.searchLabel, { marginTop: 16 }]}>Or look up by name / plate</Text>
+        <Text variant="labelMedium" style={[styles.searchLabel, { marginTop: 16 }]}>{t('guard.scan.lookupByName')}</Text>
         <TextInput
           value={query}
           onChangeText={setQuery}
           mode="outlined"
-          placeholder="Name, phone, or plate"
+          placeholder={t('guard.scan.searchPlaceholder')}
           left={<TextInput.Icon icon="magnify" />}
           autoCapitalize="none"
           style={styles.searchInput}
         />
-        {searching ? <HelperText type="info" visible>Searching…</HelperText> : null}
+        {searching ? <HelperText type="info" visible>{t('guard.scan.searching')}</HelperText> : null}
         {results.length > 0 ? (
           <View style={styles.results}>
             {results.map((r) => (
@@ -209,7 +211,7 @@ export default function GuardScanScreen() {
                   <View style={{ flex: 1 }}>
                     <Text variant="titleSmall" style={{ fontWeight: '600' }}>{r.visitor_name}</Text>
                     <Text variant="bodySmall" style={{ opacity: 0.65 }}>
-                      Unit {r.unit.unit_number}{r.vehicle_plate ? ` · ${r.vehicle_plate}` : ''}
+                      {t('common.unit', { number: r.unit.unit_number })}{r.vehicle_plate ? ` · ${r.vehicle_plate}` : ''}
                     </Text>
                   </View>
                 </Card.Content>

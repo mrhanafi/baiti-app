@@ -1,5 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +16,7 @@ const PRIMARY_TINT = '#EEEDFD';
 export default function RenovationDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [permit, setPermit] = useState<Permit | null>(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +36,7 @@ export default function RenovationDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Renovation Permit" />
+        <PurpleHeader title={t('renovation.permitTitle')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -42,11 +44,11 @@ export default function RenovationDetailScreen() {
   if (!permit) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Renovation Permit" />
+        <PurpleHeader title={t('renovation.permitTitle')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Permit not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('renovation.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -56,16 +58,16 @@ export default function RenovationDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Renovation Permit" />
+      <PurpleHeader title={t('renovation.permitTitle')} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
        <TabletContainer>
 
         <Card style={styles.card}>
           <Card.Content>
             <View style={styles.titleRow}>
-              <Text variant="titleLarge" style={styles.title}>Unit {permit.unit_number}</Text>
+              <Text variant="titleLarge" style={styles.title}>{t('common.unit', { number: permit.unit_number })}</Text>
               <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
               </View>
             </View>
             <Text variant="bodySmall" style={styles.meta}>
@@ -84,7 +86,7 @@ export default function RenovationDetailScreen() {
           <View style={styles.notice}>
             <Icon source="clock-outline" size={18} color="#92400e" />
             <Text variant="bodySmall" style={[styles.noticeText, { color: '#92400e' }]}>
-              Waiting for your JMB to review this request.
+              {t('renovation.pendingNotice')}
             </Text>
           </View>
         ) : null}
@@ -93,15 +95,14 @@ export default function RenovationDetailScreen() {
           <Card style={[styles.card, { backgroundColor: '#eff6ff' }]}>
             <Card.Content>
               <Text variant="titleSmall" style={{ fontWeight: '700', color: '#1d4ed8' }}>
-                Deposit required: RM {permit.deposit_amount.toFixed(2)}
+                {t('renovation.depositRequired', { amount: permit.deposit_amount.toFixed(2) })}
               </Text>
               <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.75 }}>
-                Pay in cash at the management office. Your permit becomes active
-                once the office confirms the deposit.
+                {t('renovation.depositInstructions')}
               </Text>
               {permit.notes ? (
                 <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', opacity: 0.75 }}>
-                  JMB notes: {permit.notes}
+                  {t('renovation.jmbNotes', { notes: permit.notes })}
                 </Text>
               ) : null}
             </Card.Content>
@@ -112,11 +113,11 @@ export default function RenovationDetailScreen() {
           <Card style={[styles.card, { backgroundColor: '#fef2f2' }]}>
             <Card.Content>
               <Text variant="titleSmall" style={{ fontWeight: '700', color: '#b91c1c' }}>
-                Request rejected
+                {t('renovation.requestRejected')}
               </Text>
               {permit.notes ? (
                 <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.75 }}>
-                  Reason: {permit.notes}
+                  {t('renovation.reason', { reason: permit.notes })}
                 </Text>
               ) : null}
             </Card.Content>
@@ -127,18 +128,17 @@ export default function RenovationDetailScreen() {
           <Card style={[styles.card, { backgroundColor: PRIMARY_TINT }]}>
             <Card.Content>
               <Text variant="titleSmall" style={{ fontWeight: '700', color: PRIMARY }}>
-                Permit active — deposit RM {permit.deposit_amount?.toFixed(2)} held
+                {t('renovation.activeDepositHeld', { amount: permit.deposit_amount?.toFixed(2) })}
               </Text>
               <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.75 }}>
-                Create gate passes for your contractor's workers below — guards
-                will see them as renovation contractors for this permit.
+                {t('renovation.activeHint')}
               </Text>
               <Button
                 mode="contained"
                 icon="qrcode"
                 onPress={() => router.push('/visitor/new')}
                 style={{ marginTop: 12 }}>
-                Create contractor pass
+                {t('renovation.createContractorPass')}
               </Button>
             </Card.Content>
           </Card>
@@ -148,18 +148,21 @@ export default function RenovationDetailScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="titleSmall" style={{ fontWeight: '700' }}>
-                Permit closed
+                {t('renovation.permitClosed')}
               </Text>
               <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.75 }}>
                 {permit.deposit_status === 'refunded'
-                  ? `Deposit of RM ${permit.deposit_amount?.toFixed(2)} refunded in full.`
+                  ? t('renovation.depositRefunded', { amount: permit.deposit_amount?.toFixed(2) })
                   : permit.deposit_status === 'partially_refunded'
-                    ? `RM ${permit.refund_amount?.toFixed(2)} of your RM ${permit.deposit_amount?.toFixed(2)} deposit was refunded.`
-                    : `Deposit of RM ${permit.deposit_amount?.toFixed(2)} was forfeited.`}
+                    ? t('renovation.depositPartiallyRefunded', {
+                        refund: permit.refund_amount?.toFixed(2),
+                        amount: permit.deposit_amount?.toFixed(2),
+                      })
+                    : t('renovation.depositForfeited', { amount: permit.deposit_amount?.toFixed(2) })}
               </Text>
               {permit.notes && permit.deposit_status !== 'refunded' ? (
                 <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', opacity: 0.75 }}>
-                  Reason: {permit.notes}
+                  {t('renovation.reason', { reason: permit.notes })}
                 </Text>
               ) : null}
             </Card.Content>

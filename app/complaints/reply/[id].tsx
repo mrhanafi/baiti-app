@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -26,6 +27,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8123';
 
 export default function ReplyScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [text, setText] = useState('');
   const [images, setImages] = useState<ImagePicker.ImagePickerAsset[]>([]);
@@ -40,7 +42,7 @@ export default function ReplyScreen() {
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera disabled', 'Allow camera access in Settings to take a photo.');
+      Alert.alert(t('complaints.errors.cameraDisabled'), t('complaints.errors.cameraDisabledMsg'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -97,9 +99,9 @@ export default function ReplyScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        setError(first?.[0] ?? 'Please fix the highlighted fields.');
+        setError(first?.[0] ?? t('complaints.errors.fixHighlighted'));
       } else {
-        setError('Could not send reply. Check your connection.');
+        setError(t('complaints.errors.couldNotSendReply'));
       }
     }
     setLoading(false);
@@ -107,7 +109,7 @@ export default function ReplyScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Reply" />
+      <PurpleHeader title={t('complaints.reply')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}>
@@ -118,19 +120,19 @@ export default function ReplyScreen() {
 
           <Card style={styles.card}>
             <Card.Content>
-              <Text variant="titleSmall" style={styles.label}>Your reply</Text>
+              <Text variant="titleSmall" style={styles.label}>{t('complaints.yourReply')}</Text>
               <TextInput
                 value={text}
                 onChangeText={setText}
                 multiline
-                placeholder="Add a comment, update, or follow-up..."
+                placeholder={t('complaints.replyPlaceholder')}
                 placeholderTextColor="#9ca3af"
                 maxLength={5000}
                 style={styles.input}
               />
 
               <Text variant="titleSmall" style={[styles.label, { marginTop: 16 }]}>
-                Photos (optional)
+                {t('complaints.form.photosOptional')}
               </Text>
               <View style={styles.photoRow}>
                 {images.map((img) => (
@@ -149,7 +151,7 @@ export default function ReplyScreen() {
                   </Pressable>
                 ) : null}
               </View>
-              <Text variant="bodySmall" style={styles.hint}>Up to 5 photos.</Text>
+              <Text variant="bodySmall" style={styles.hint}>{t('complaints.form.upToFivePhotos')}</Text>
 
               {error ? <HelperText type="error" visible style={{ marginTop: 8 }}>{error}</HelperText> : null}
             </Card.Content>
@@ -162,7 +164,7 @@ export default function ReplyScreen() {
             disabled={loading || !text.trim()}
             style={styles.submit}
             contentStyle={styles.submitContent}>
-            Send reply
+            {t('complaints.sendReply')}
           </Button>
          </TabletContainer>
         </ScrollView>

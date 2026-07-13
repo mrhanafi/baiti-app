@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Icon, IconButton, Text } from 'react-native-paper';
 import ImageView from 'react-native-image-viewing';
@@ -25,6 +26,7 @@ type Announcement = {
 export default function AnnouncementDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [item, setItem] = useState<Announcement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function AnnouncementDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Announcement" />
+        <PurpleHeader title={t('announcements.announcement')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -53,11 +55,11 @@ export default function AnnouncementDetailScreen() {
   if (!item) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Announcement" />
+        <PurpleHeader title={t('announcements.announcement')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Announcement not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('announcements.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -65,13 +67,13 @@ export default function AnnouncementDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Announcement" />
+      <PurpleHeader title={t('announcements.announcement')} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
           <Card.Content>
             {item.pinned ? (
               <View style={styles.pinPill}>
-                <Text style={styles.pinText}>📌 Pinned</Text>
+                <Text style={styles.pinText}>{t('announcements.pinned')}</Text>
               </View>
             ) : null}
             <Text variant="headlineSmall" style={styles.title}>{item.title}</Text>
@@ -91,7 +93,7 @@ export default function AnnouncementDetailScreen() {
         {item.photos.length > 0 ? (
           <View style={styles.photosBlock}>
             <Text variant="bodySmall" style={styles.photoHint}>
-              {item.photos.length} photo{item.photos.length === 1 ? '' : 's'} · tap to view
+              {t('announcements.photoCountTap', { count: item.photos.length })}
             </Text>
             <ScrollView
               horizontal

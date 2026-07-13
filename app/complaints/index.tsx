@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Chip, FAB, Icon, SegmentedButtons, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,18 +39,20 @@ type FeedItem = {
   created_at: string;
 };
 
+// `label` values are i18n keys — render with t(s.label).
 const STATUS_COLOR: Record<string, { bg: string; fg: string; label: string }> = {
-  open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
-  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
+  open: { bg: '#fef3c7', fg: '#92400e', label: 'status.open' },
+  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
   // Residents see 'escalated' as plain 'In progress' — the term is admin-side vocabulary.
-  escalated: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
-  resolved: { bg: '#dcfce7', fg: '#15803d', label: 'Resolved' },
-  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+  escalated: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
+  resolved: { bg: '#dcfce7', fg: '#15803d', label: 'status.resolved' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.closed' },
 };
 
 export default function ComplaintListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { isTablet, contentMaxWidth } = useResponsive();
   const [tab, setTab] = useState<Tab>('mine');
   const [filter, setFilter] = useState<Filter>('active');
@@ -90,15 +93,15 @@ export default function ComplaintListScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Complaints" />
+      <PurpleHeader title={t('complaints.title')} />
 
       <View style={styles.tabsWrap}>
         <SegmentedButtons
           value={tab}
           onValueChange={(v) => setTab(v as Tab)}
           buttons={[
-            { value: 'mine', label: 'My complaints', icon: 'account' },
-            { value: 'community', label: 'Community', icon: 'account-group' },
+            { value: 'mine', label: t('complaints.tabs.mine'), icon: 'account' },
+            { value: 'community', label: t('complaints.tabs.community'), icon: 'account-group' },
           ]}
         />
       </View>
@@ -113,7 +116,7 @@ export default function ComplaintListScreen() {
               style={[styles.chip, filter === f && styles.chipActive]}
               textStyle={filter === f ? styles.chipTextActive : styles.chipText}
               compact>
-              {f === 'active' ? 'Active' : 'All'}
+              {f === 'active' ? t('complaints.filters.active') : t('complaints.filters.all')}
             </Chip>
           ))}
         </View>
@@ -126,10 +129,10 @@ export default function ComplaintListScreen() {
           <View style={styles.center}>
             <Icon source="comment-alert-outline" size={48} color="#9ca3af" />
             <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-              {filter === 'active' ? 'No active complaints.' : 'No complaints yet.'}
+              {filter === 'active' ? t('complaints.noActiveComplaints') : t('complaints.noComplaintsYet')}
             </Text>
             <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.5 }}>
-              Tap + to file a new complaint.
+              {t('complaints.tapToFile')}
             </Text>
           </View>
         ) : (
@@ -148,15 +151,15 @@ export default function ComplaintListScreen() {
                     <View style={styles.titleRow}>
                       <Text variant="titleMedium" style={styles.title}>{item.title}</Text>
                       <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                        <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                        <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
                       </View>
                     </View>
                     <Text variant="bodySmall" style={styles.meta}>
                       {item.location}{item.category ? ` · ${item.category}` : ''}
                     </Text>
                     <Text variant="bodySmall" style={styles.meta}>
-                      Filed {new Date(item.created_at).toLocaleDateString()} ·{' '}
-                      {item.photo_count > 0 ? `${item.photo_count} photo${item.photo_count === 1 ? '' : 's'}` : 'no photos'}
+                      {t('complaints.filedDate', { date: new Date(item.created_at).toLocaleDateString() })} ·{' '}
+                      {item.photo_count > 0 ? t('complaints.photoCount', { count: item.photo_count }) : t('complaints.noPhotos')}
                     </Text>
                   </Card.Content>
                 </Card>
@@ -168,10 +171,10 @@ export default function ComplaintListScreen() {
         <View style={styles.center}>
           <Icon source="account-group-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-            No public complaints yet.
+            {t('complaints.noPublicComplaints')}
           </Text>
           <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.5, textAlign: 'center' }}>
-            Complaints your neighbours mark as public show up here.
+            {t('complaints.publicFeedHint')}
           </Text>
         </View>
       ) : (
@@ -188,11 +191,11 @@ export default function ComplaintListScreen() {
                   <View style={styles.jmbRow}>
                     <View style={styles.jmbBadge}>
                       <Text style={styles.jmbBadgeText}>
-                        {item.organization.legal_name ?? 'JMB'}
+                        {item.organization.legal_name ?? t('complaints.jmb')}
                       </Text>
                     </View>
                     <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                      <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                      <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
                     </View>
                   </View>
                   <Text variant="titleMedium" style={styles.title}>{item.title}</Text>
@@ -205,8 +208,8 @@ export default function ComplaintListScreen() {
                     {item.location}{item.category ? ` · ${item.category}` : ''}
                   </Text>
                   <Text variant="bodySmall" style={styles.meta}>
-                    {item.reporter_name ?? 'A resident'}
-                    {item.unit_number ? ` · Unit ${item.unit_number}` : ''} ·{' '}
+                    {item.reporter_name ?? t('complaints.aResident')}
+                    {item.unit_number ? ` · ${t('common.unit', { number: item.unit_number })}` : ''} ·{' '}
                     {new Date(item.created_at).toLocaleDateString()}
                   </Text>
                 </Card.Content>
@@ -219,7 +222,7 @@ export default function ComplaintListScreen() {
       {tab === 'mine' ? (
         <FAB
           icon="plus"
-          label="New complaint"
+          label={t('complaints.newComplaint')}
           onPress={() => router.push('/complaints/new')}
           style={[styles.fab, { bottom: insets.bottom + 32 }]}
           color="#fff"

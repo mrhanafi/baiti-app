@@ -56,4 +56,16 @@ export async function setLocale(code: LocaleCode): Promise<void> {
   });
 }
 
+/**
+ * Called right after login/registration: pushes the language chosen on the
+ * login screen (pre-auth, device-only) to the fresh account so emails and
+ * pushes match from day one.
+ */
+export function syncLocaleAfterAuth(): void {
+  apiFetch('/api/v1/me/locale', {
+    method: 'POST',
+    body: JSON.stringify({ locale: i18n.language }),
+  }).catch(() => {});
+}
+
 export default i18n;

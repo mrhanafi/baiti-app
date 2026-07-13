@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -37,6 +38,7 @@ type CategoryGroup = {
 export default function NewReportScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const homes = user?.units ?? [];
   // Bound home for this report — read-only. Sourced from the Home tab's
@@ -102,7 +104,7 @@ export default function NewReportScreen() {
   async function takePhotoWithCamera() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera disabled', 'Allow camera access in Settings to take a photo.');
+      Alert.alert(t('complaints.errors.cameraDisabled'), t('complaints.errors.cameraDisabledMsg'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -173,11 +175,11 @@ export default function NewReportScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        setError(first?.[0] ?? 'Please fix the highlighted fields.');
+        setError(first?.[0] ?? t('complaints.errors.fixHighlighted'));
       } else if (err instanceof ApiError) {
-        setError(`Failed (${err.status}).`);
+        setError(t('complaints.errors.failedStatus', { status: err.status }));
       } else {
-        setError('Could not reach the server.');
+        setError(t('complaints.errors.serverUnreachable'));
       }
     }
     setLoading(false);
@@ -186,11 +188,11 @@ export default function NewReportScreen() {
   if (homes.length === 0) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="New Complaint" />
+        <PurpleHeader title={t('complaints.newComplaintTitle')} />
         <View style={styles.empty}>
           <Icon source="home-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            Verify your home first to file complaints.
+            {t('complaints.verifyHomeFirst')}
           </Text>
         </View>
       </View>
@@ -199,7 +201,7 @@ export default function NewReportScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="New Complaint" />
+      <PurpleHeader title={t('complaints.newComplaintTitle')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}>
@@ -217,10 +219,10 @@ export default function NewReportScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                    {boundHome.property_name ?? 'Your home'}
+                    {boundHome.property_name ?? t('complaints.yourHome')}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                    Unit {boundHome.unit_number}
+                    {t('common.unit', { number: boundHome.unit_number })}
                   </Text>
                 </View>
               </Card.Content>
@@ -230,36 +232,36 @@ export default function NewReportScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <TextInput
-                label="Title *"
+                label={t('complaints.form.titleLabel')}
                 value={title}
                 onChangeText={setTitle}
                 mode="outlined"
                 style={styles.input}
-                placeholder="e.g. Lift A stuck on 5th floor"
+                placeholder={t('complaints.form.titlePlaceholder')}
                 maxLength={255}
               />
               <TextInput
-                label="What's the issue? *"
+                label={t('complaints.form.bodyLabel')}
                 value={body}
                 onChangeText={setBody}
                 mode="outlined"
                 style={styles.input}
                 multiline
                 numberOfLines={5}
-                placeholder="Describe what's happening..."
+                placeholder={t('complaints.form.bodyPlaceholder')}
                 maxLength={5000}
               />
               <TextInput
-                label="Where? *"
+                label={t('complaints.form.locationLabel')}
                 value={location}
                 onChangeText={setLocation}
                 mode="outlined"
                 style={styles.input}
-                placeholder="e.g. Lift A, ground floor / My unit bathroom"
+                placeholder={t('complaints.form.locationPlaceholder')}
                 maxLength={255}
               />
 
-              <Text variant="titleSmall" style={styles.section}>Category</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('complaints.form.category')}</Text>
               <View style={styles.categoryGrid}>
                 {categories.map((c) => (
                   <Pressable
@@ -273,22 +275,22 @@ export default function NewReportScreen() {
                 ))}
               </View>
 
-              <Text variant="titleSmall" style={styles.section}>Who can see this?</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('complaints.form.whoCanSee')}</Text>
               <SegmentedButtons
                 value={visibility}
                 onValueChange={setVisibility}
                 buttons={[
-                  { value: 'private', label: 'Private', icon: 'lock-outline' },
-                  { value: 'public', label: 'Public', icon: 'account-group-outline' },
+                  { value: 'private', label: t('complaints.form.private'), icon: 'lock-outline' },
+                  { value: 'public', label: t('complaints.form.public'), icon: 'account-group-outline' },
                 ]}
               />
               <Text variant="bodySmall" style={styles.hint}>
                 {visibility === 'public'
-                  ? 'Other residents can see this in the Community Feed.'
-                  : 'Only you and the JMB can see this.'}
+                  ? t('complaints.form.publicHint')
+                  : t('complaints.form.privateHint')}
               </Text>
 
-              <Text variant="titleSmall" style={styles.section}>Photos (optional)</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('complaints.form.photosOptional')}</Text>
               <View style={styles.photoRow}>
                 {images.map((img) => (
                   <View key={img.uri} style={styles.photoThumb}>
@@ -307,7 +309,7 @@ export default function NewReportScreen() {
                 ) : null}
               </View>
               <Text variant="bodySmall" style={styles.hint}>
-                Up to 5 photos.
+                {t('complaints.form.upToFivePhotos')}
               </Text>
 
               {error ? <HelperText type="error" visible style={{ marginTop: 8 }}>{error}</HelperText> : null}
@@ -321,11 +323,11 @@ export default function NewReportScreen() {
             disabled={submitDisabled}
             style={styles.submit}
             contentStyle={styles.submitContent}>
-            File complaint
+            {t('complaints.fileComplaint')}
           </Button>
 
           <Text variant="bodySmall" style={styles.disclaimer}>
-            Your JMB admin will get an email and respond in the thread. You'll be notified of replies.
+            {t('complaints.disclaimer')}
           </Text>
          </TabletContainer>
         </ScrollView>

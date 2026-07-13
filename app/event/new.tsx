@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
 
@@ -15,17 +16,18 @@ const PRIMARY_TINT = '#EEEDFD';
 const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 
 const PURPOSES = [
-  { value: 'family', label: 'Family' },
-  { value: 'services', label: 'Services' },
-  { value: 'contractor', label: 'Contractor' },
-  { value: 'cleaner', label: 'Cleaner' },
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'other', label: 'Other' },
+  { value: 'family', labelKey: 'event.purposes.family' },
+  { value: 'services', labelKey: 'event.purposes.services' },
+  { value: 'contractor', labelKey: 'event.purposes.contractor' },
+  { value: 'cleaner', labelKey: 'event.purposes.cleaner' },
+  { value: 'delivery', labelKey: 'event.purposes.delivery' },
+  { value: 'other', labelKey: 'event.purposes.other' },
 ];
 
 export default function NewEventScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const homes = user?.units ?? [];
   // Bound home for this event — read-only. Sourced from the Home tab's
@@ -97,11 +99,11 @@ export default function NewEventScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        setError(first?.[0] ?? 'Please fix the highlighted fields.');
+        setError(first?.[0] ?? t('event.new.errors.fixHighlighted'));
       } else if (err instanceof ApiError) {
-        setError(`Failed (${err.status}).`);
+        setError(t('event.new.errors.failedStatus', { status: err.status }));
       } else {
-        setError('Could not reach the server.');
+        setError(t('event.new.errors.network'));
       }
     }
     setLoading(false);
@@ -110,11 +112,11 @@ export default function NewEventScreen() {
   if (homes.length === 0) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="New event" />
+        <PurpleHeader title={t('event.new.title')} />
         <View style={styles.empty}>
           <Icon source="home-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            Verify your home first to create events.
+            {t('event.new.verifyFirst')}
           </Text>
         </View>
       </View>
@@ -123,7 +125,7 @@ export default function NewEventScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="New event" />
+      <PurpleHeader title={t('event.new.title')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}>
@@ -142,10 +144,10 @@ export default function NewEventScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                    {boundHome.property_name ?? 'Your home'}
+                    {boundHome.property_name ?? t('event.new.yourHome')}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                    Unit {boundHome.unit_number}
+                    {t('common.unit', { number: boundHome.unit_number })}
                   </Text>
                 </View>
               </Card.Content>
@@ -154,17 +156,17 @@ export default function NewEventScreen() {
 
           <Card style={styles.formCard}>
             <Card.Content>
-              <Text variant="titleSmall" style={styles.sectionFirst}>Event</Text>
+              <Text variant="titleSmall" style={styles.sectionFirst}>{t('event.new.sectionEvent')}</Text>
               <TextInput
-                label="Title *"
+                label={t('event.new.titleLabel')}
                 value={title}
                 onChangeText={setTitle}
                 mode="outlined"
                 style={styles.input}
-                placeholder="e.g. Hanafi's wedding, Open house"
+                placeholder={t('event.new.titlePlaceholder')}
               />
 
-              <Text variant="titleSmall" style={styles.section}>Purpose</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('event.new.sectionPurpose')}</Text>
               <View style={styles.purposeGrid}>
                 {PURPOSES.map((p) => (
                   <Pressable
@@ -172,20 +174,20 @@ export default function NewEventScreen() {
                     onPress={() => setPurpose(p.value)}
                     style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
                     <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
-                      {p.label}
+                      {t(p.labelKey)}
                     </Text>
                   </Pressable>
                 ))}
               </View>
 
-              <Text variant="titleSmall" style={styles.section}>When</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('event.new.sectionWhen')}</Text>
               <View style={styles.customRow}>
                 <Pressable style={styles.dateBtn} onPress={() => setShowFromPicker(true)}>
-                  <Text variant="labelSmall" style={styles.label}>From</Text>
+                  <Text variant="labelSmall" style={styles.label}>{t('event.new.from')}</Text>
                   <Text>{validFrom.toLocaleDateString()}</Text>
                 </Pressable>
                 <Pressable style={styles.dateBtn} onPress={() => setShowUntilPicker(true)}>
-                  <Text variant="labelSmall" style={styles.label}>Until</Text>
+                  <Text variant="labelSmall" style={styles.label}>{t('event.new.until')}</Text>
                   <Text>{validUntil.toLocaleDateString()}</Text>
                 </Pressable>
               </View>
@@ -227,24 +229,24 @@ export default function NewEventScreen() {
                 />
               ) : null}
 
-              <Text variant="titleSmall" style={styles.section}>Optional</Text>
+              <Text variant="titleSmall" style={styles.section}>{t('event.new.sectionOptional')}</Text>
               <TextInput
-                label="Max guests (leave blank for unlimited)"
+                label={t('event.new.maxGuests')}
                 value={maxGuests}
-                onChangeText={(t) => setMaxGuests(t.replace(/\D/g, ''))}
+                onChangeText={(v) => setMaxGuests(v.replace(/\D/g, ''))}
                 mode="outlined"
                 style={styles.input}
                 keyboardType="number-pad"
               />
               <TextInput
-                label="Notes for your guests"
+                label={t('event.new.notesLabel')}
                 value={notes}
                 onChangeText={setNotes}
                 mode="outlined"
                 style={styles.input}
                 multiline
                 numberOfLines={3}
-                placeholder="e.g. Park at the visitor bay, take Lift A to floor 12"
+                placeholder={t('event.new.notesPlaceholder')}
               />
 
               {error ? <HelperText type="error" visible style={{ marginTop: 8 }}>{error}</HelperText> : null}
@@ -258,7 +260,7 @@ export default function NewEventScreen() {
             disabled={submitDisabled}
             style={styles.submit}
             contentStyle={styles.submitContent}>
-            Create event &amp; get invite link
+            {t('event.new.submit')}
           </Button>
         </ScrollView>
       </KeyboardAvoidingView>

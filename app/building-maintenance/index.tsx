@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 
@@ -22,17 +23,19 @@ export type BoardTask = {
   organization: { id: string | null; legal_name: string | null };
 };
 
+// `label` values are i18n keys — render with t(s.label).
 export const TASK_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
-  open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
-  assigned: { bg: '#e0e7ff', fg: '#4338ca', label: 'Assigned' },
-  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
-  on_hold: { bg: '#fde8e8', fg: '#c81e1e', label: 'On hold' },
-  completed: { bg: '#dcfce7', fg: '#15803d', label: 'Completed' },
-  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+  open: { bg: '#fef3c7', fg: '#92400e', label: 'status.open' },
+  assigned: { bg: '#e0e7ff', fg: '#4338ca', label: 'status.assigned' },
+  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
+  on_hold: { bg: '#fde8e8', fg: '#c81e1e', label: 'status.onHold' },
+  completed: { bg: '#dcfce7', fg: '#15803d', label: 'status.completed' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.closed' },
 };
 
 export default function MaintenanceBoardScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [ongoing, setOngoing] = useState<BoardTask[]>([]);
   const [completed, setCompleted] = useState<BoardTask[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +72,7 @@ export default function MaintenanceBoardScreen() {
           <View style={styles.titleRow}>
             <Text variant="titleMedium" style={styles.title}>{task.title}</Text>
             <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-              <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+              <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
             </View>
           </View>
           <Text variant="bodySmall" style={styles.meta}>
@@ -78,12 +81,12 @@ export default function MaintenanceBoardScreen() {
           <View style={styles.bottomRow}>
             <Text variant="bodySmall" style={styles.meta}>
               {task.completed_at
-                ? `Completed ${new Date(task.completed_at).toLocaleDateString()}`
-                : `Started ${new Date(task.started_at).toLocaleDateString()}`}
+                ? t('board.completedDate', { date: new Date(task.completed_at).toLocaleDateString() })
+                : t('board.startedDate', { date: new Date(task.started_at).toLocaleDateString() })}
             </Text>
             {task.is_delayed ? (
               <View style={styles.delayedBadge}>
-                <Text style={styles.delayedText}>Delayed</Text>
+                <Text style={styles.delayedText}>{t('board.delayed')}</Text>
               </View>
             ) : null}
           </View>
@@ -94,7 +97,7 @@ export default function MaintenanceBoardScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Building Maintenance" />
+      <PurpleHeader title={t('board.title')} />
 
       {loading && !refreshing ? (
         <View style={styles.center}><ActivityIndicator /></View>
@@ -104,12 +107,12 @@ export default function MaintenanceBoardScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}>
          <TabletContainer>
 
-          <Text variant="titleSmall" style={styles.sectionTitle}>Ongoing work</Text>
+          <Text variant="titleSmall" style={styles.sectionTitle}>{t('board.ongoingWork')}</Text>
           {ongoing.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Icon source="tools" size={36} color="#9ca3af" />
               <Text variant="bodySmall" style={styles.emptyText}>
-                No ongoing maintenance work right now.
+                {t('board.noOngoing')}
               </Text>
             </View>
           ) : (
@@ -117,13 +120,13 @@ export default function MaintenanceBoardScreen() {
           )}
 
           <Text variant="titleSmall" style={[styles.sectionTitle, { marginTop: 20 }]}>
-            Recently completed
+            {t('board.recentlyCompleted')}
           </Text>
           {completed.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Icon source="check-circle-outline" size={36} color="#9ca3af" />
               <Text variant="bodySmall" style={styles.emptyText}>
-                Nothing completed in the last 30 days.
+                {t('board.noneCompleted')}
               </Text>
             </View>
           ) : (
@@ -131,7 +134,7 @@ export default function MaintenanceBoardScreen() {
           )}
 
           <Text variant="bodySmall" style={styles.disclaimer}>
-            This board shows maintenance work your JMB has made public.
+            {t('board.disclaimer')}
           </Text>
          </TabletContainer>
         </ScrollView>

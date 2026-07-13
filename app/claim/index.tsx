@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
 
@@ -19,6 +20,7 @@ function normalizeIc(raw: string): string {
 export default function ClaimIcScreen() {
   const router = useRouter();
   const { refreshUser } = useAuth();
+  const { t } = useTranslation();
   const [ic, setIc] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,12 +43,12 @@ export default function ClaimIcScreen() {
       });
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
-        const msg = err.body?.errors?.ic_number?.[0] ?? 'IC could not be verified.';
+        const msg = err.body?.errors?.ic_number?.[0] ?? t('claim.errors.icNotVerified');
         setError(msg);
       } else if (err instanceof ApiError) {
-        setError(`Submission failed (${err.status}).`);
+        setError(t('claim.errors.submissionFailed', { status: err.status }));
       } else {
-        setError('Could not reach the server. Check your connection.');
+        setError(t('claim.errors.serverUnreachable'));
       }
     }
     setLoading(false);
@@ -56,7 +58,7 @@ export default function ClaimIcScreen() {
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}>
-      <ClaimHeader title="Verify your home" />
+      <ClaimHeader title={t('claim.headerTitle')} />
       <ScrollView contentContainerStyle={styles.inner} keyboardShouldPersistTaps="handled">
         <Card style={styles.heroCard}>
           <Card.Content style={styles.heroContent}>
@@ -65,31 +67,30 @@ export default function ClaimIcScreen() {
             </View>
             <View style={{ flex: 1 }}>
               <Text variant="titleMedium" style={styles.heroTitle}>
-                Verify with your IC
+                {t('claim.heroTitle')}
               </Text>
               <Text variant="bodySmall" style={styles.heroBody}>
-                We&apos;ll match your IC against your JMB&apos;s owner registry. If it matches,
-                you&apos;re in immediately — no waiting for approval.
+                {t('claim.heroBody')}
               </Text>
             </View>
           </Card.Content>
         </Card>
 
         <TextInput
-          label="IC number"
+          label={t('claim.icLabel')}
           value={ic}
           onChangeText={(v) => setIc(formatMyIc(v))}
           keyboardType="number-pad"
           autoCapitalize="none"
           autoCorrect={false}
           maxLength={14}
-          placeholder="901231-14-5678"
+          placeholder={t('claim.icPlaceholder')}
           mode="outlined"
           style={styles.input}
           error={!!error}
         />
         <HelperText type="info" visible>
-          Dashes are added automatically.
+          {t('claim.dashesAuto')}
         </HelperText>
 
         {error ? (
@@ -105,12 +106,11 @@ export default function ClaimIcScreen() {
           disabled={submitDisabled}
           style={styles.button}
           contentStyle={styles.buttonContent}>
-          Verify
+          {t('claim.verify')}
         </Button>
 
         <Text variant="bodySmall" style={styles.disclaimer}>
-          If your IC isn&apos;t found, ask your JMB to add you to their owner registry, then try
-          again.
+          {t('claim.icNotFoundHint')}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

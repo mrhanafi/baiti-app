@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import {
   ActivityIndicator,
@@ -38,16 +39,17 @@ type Pass = {
 };
 
 const STATE_COLOR: Record<string, { bg: string; fg: string; label: string }> = {
-  awaiting:  { bg: '#dcfce7', fg: '#15803d', label: 'Ready for entry' },
-  inside:    { bg: '#dbeafe', fg: '#1d4ed8', label: 'Inside' },
-  out:       { bg: '#f3f4f6', fg: '#6b7280', label: 'Out (visit complete)' },
-  upcoming:  { bg: PRIMARY_TINT, fg: PRIMARY, label: 'Not yet valid' },
-  expired:   { bg: '#f3f4f6', fg: '#6b7280', label: 'Expired' },
-  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: 'Cancelled by host' },
+  awaiting:  { bg: '#dcfce7', fg: '#15803d', label: 'guard.states.readyForEntry' },
+  inside:    { bg: '#dbeafe', fg: '#1d4ed8', label: 'guard.states.inside' },
+  out:       { bg: '#f3f4f6', fg: '#6b7280', label: 'guard.states.outComplete' },
+  upcoming:  { bg: PRIMARY_TINT, fg: PRIMARY, label: 'guard.states.notYetValid' },
+  expired:   { bg: '#f3f4f6', fg: '#6b7280', label: 'guard.states.expired' },
+  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: 'guard.states.cancelledByHost' },
 };
 
 export default function GuardPassDetail() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [pass, setPass] = useState<Pass | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,12 +84,12 @@ export default function GuardPassDetail() {
       setTagOpen(false);
       setTag('');
       setPass(data.pass);
-      Alert.alert('Entry approved', `${pass?.visitor_name} can enter. Tag ${data.entry.visit_tag} recorded.`, [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('guard.pass.entryApproved'), t('guard.pass.entryApprovedBody', { name: pass?.visitor_name, tag: data.entry.visit_tag }), [
+        { text: t('guard.ok'), onPress: () => router.back() },
       ]);
     } catch (err) {
-      const msg = err instanceof ApiError ? (err.body?.errors?.pass?.[0] ?? err.body?.errors?.visit_tag?.[0] ?? err.message) : 'Could not approve.';
-      Alert.alert('Approve failed', msg);
+      const msg = err instanceof ApiError ? (err.body?.errors?.pass?.[0] ?? err.body?.errors?.visit_tag?.[0] ?? err.message) : t('guard.pass.couldNotApprove');
+      Alert.alert(t('guard.pass.approveFailed'), msg);
     }
     setActing(false);
   }
@@ -97,12 +99,12 @@ export default function GuardPassDetail() {
     try {
       const data = await apiFetch(`/api/v1/guard/passes/${id}/exit`, { method: 'POST' });
       setPass(data.pass);
-      Alert.alert('Exit recorded', `${pass?.visitor_name} has left.`, [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('guard.pass.exitRecorded'), t('guard.pass.exitRecordedBody', { name: pass?.visitor_name }), [
+        { text: t('guard.ok'), onPress: () => router.back() },
       ]);
     } catch (err) {
-      const msg = err instanceof ApiError ? (err.body?.errors?.pass?.[0] ?? err.message) : 'Could not mark exit.';
-      Alert.alert('Exit failed', msg);
+      const msg = err instanceof ApiError ? (err.body?.errors?.pass?.[0] ?? err.message) : t('guard.pass.couldNotMarkExit');
+      Alert.alert(t('guard.pass.exitFailed'), msg);
     }
     setActing(false);
   }
@@ -116,12 +118,12 @@ export default function GuardPassDetail() {
         body: JSON.stringify({ reason: denyReason.trim() }),
       });
       setDenyOpen(false);
-      Alert.alert('Entry denied', 'The host has been notified.', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('guard.pass.entryDenied'), t('guard.pass.hostNotified'), [
+        { text: t('guard.ok'), onPress: () => router.back() },
       ]);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Could not deny.';
-      Alert.alert('Deny failed', msg);
+      const msg = err instanceof ApiError ? err.message : t('guard.pass.couldNotDeny');
+      Alert.alert(t('guard.pass.denyFailed'), msg);
     }
     setActing(false);
   }
@@ -129,7 +131,7 @@ export default function GuardPassDetail() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Visitor pass" />
+        <PurpleHeader title={t('guard.pass.title')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -137,11 +139,11 @@ export default function GuardPassDetail() {
   if (!pass) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Visitor pass" />
+        <PurpleHeader title={t('guard.pass.title')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Pass not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('guard.pass.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -154,16 +156,16 @@ export default function GuardPassDetail() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Verify visitor" />
+      <PurpleHeader title={t('guard.pass.verifyVisitor')} />
       <ScrollView contentContainerStyle={styles.scroll}>
         <Card style={styles.card}>
           <Card.Content style={{ alignItems: 'center' }}>
             <View style={[styles.statusPill, { backgroundColor: stateMeta.bg }]}>
-              <Text style={[styles.statusText, { color: stateMeta.fg }]}>{stateMeta.label}</Text>
+              <Text style={[styles.statusText, { color: stateMeta.fg }]}>{t(stateMeta.label)}</Text>
             </View>
             <Text variant="headlineSmall" style={styles.visitorName}>{pass.visitor_name}</Text>
             <Text variant="bodyMedium" style={styles.subline}>
-              {pass.purpose.charAt(0).toUpperCase() + pass.purpose.slice(1)}
+              {t(`guard.purposes.${pass.purpose}`, { defaultValue: pass.purpose.charAt(0).toUpperCase() + pass.purpose.slice(1) })}
               {pass.vehicle_plate ? `  ·  ${pass.vehicle_plate}` : ''}
             </Text>
 
@@ -171,7 +173,7 @@ export default function GuardPassDetail() {
               <View style={styles.renoBanner}>
                 <Icon source="hammer" size={18} color="#92400e" />
                 <Text style={styles.renoBannerText}>
-                  Renovation contractor — Permit #{pass.renovation.permit_no}
+                  {t('guard.pass.renovationBanner', { permitNo: pass.renovation.permit_no })}
                   {pass.renovation.contractor_name ? ` (${pass.renovation.contractor_name})` : ''}
                 </Text>
               </View>
@@ -181,7 +183,7 @@ export default function GuardPassDetail() {
               <View style={styles.insideBanner}>
                 <Icon source="account-check" size={20} color="#1d4ed8" />
                 <Text style={styles.insideBannerText}>
-                  Inside since {insideSince} · tag <Text style={styles.tag}>{pass.open_entry.visit_tag}</Text>
+                  {t('guard.pass.insideSince', { time: insideSince })} <Text style={styles.tag}>{pass.open_entry.visit_tag}</Text>
                 </Text>
               </View>
             ) : null}
@@ -190,13 +192,13 @@ export default function GuardPassDetail() {
 
         <Card style={styles.card}>
           <Card.Content>
-            <Text variant="titleSmall" style={styles.sectionTitle}>Pass details</Text>
-            <Row label="Unit" value={`${pass.unit.unit_number}\n${pass.unit.property_name ?? ''}`} />
-            <Row label="Host" value={`${pass.host.name ?? '—'}${pass.host.phone ? `\n${pass.host.phone}` : ''}`} />
-            {pass.visitor_phone ? <Row label="Phone" value={pass.visitor_phone} /> : null}
-            {pass.visitor_ic ? <Row label="IC" value={pass.visitor_ic} /> : null}
-            <Row label="Valid from" value={new Date(pass.valid_from).toLocaleString()} />
-            <Row label="Valid until" value={new Date(pass.valid_until).toLocaleString()} />
+            <Text variant="titleSmall" style={styles.sectionTitle}>{t('guard.pass.passDetails')}</Text>
+            <Row label={t('guard.pass.unit')} value={`${pass.unit.unit_number}\n${pass.unit.property_name ?? ''}`} />
+            <Row label={t('guard.pass.host')} value={`${pass.host.name ?? '—'}${pass.host.phone ? `\n${pass.host.phone}` : ''}`} />
+            {pass.visitor_phone ? <Row label={t('guard.pass.phone')} value={pass.visitor_phone} /> : null}
+            {pass.visitor_ic ? <Row label={t('guard.pass.ic')} value={pass.visitor_ic} /> : null}
+            <Row label={t('guard.pass.validFrom')} value={new Date(pass.valid_from).toLocaleString()} />
+            <Row label={t('guard.pass.validUntil')} value={new Date(pass.valid_until).toLocaleString()} />
           </Card.Content>
         </Card>
 
@@ -209,7 +211,7 @@ export default function GuardPassDetail() {
             disabled={acting}
             style={[styles.action, { backgroundColor: '#1d4ed8' }]}
             contentStyle={styles.actionContent}>
-            Mark exit
+            {t('guard.pass.markExit')}
           </Button>
         ) : isActive ? (
           <>
@@ -220,7 +222,7 @@ export default function GuardPassDetail() {
               disabled={acting}
               style={[styles.action, { backgroundColor: '#22c55e' }]}
               contentStyle={styles.actionContent}>
-              {state === 'out' ? 'Approve re-entry' : 'Approve entry'}
+              {state === 'out' ? t('guard.pass.approveReentry') : t('guard.pass.approveEntry')}
             </Button>
             <Button
               mode="outlined"
@@ -230,7 +232,7 @@ export default function GuardPassDetail() {
               textColor="#ef4444"
               style={styles.action}
               contentStyle={styles.actionContent}>
-              Deny
+              {t('guard.pass.deny')}
             </Button>
           </>
         ) : (
@@ -238,10 +240,10 @@ export default function GuardPassDetail() {
             <Card.Content>
               <Text variant="bodyMedium" style={{ color: '#92400e' }}>
                 {pass.status === 'cancelled'
-                  ? 'This pass was cancelled by the host.'
+                  ? t('guard.pass.cancelledByHostNotice')
                   : pass.status === 'expired'
-                    ? 'This pass has expired.'
-                    : 'This pass is not yet valid.'}
+                    ? t('guard.pass.expiredNotice')
+                    : t('guard.pass.notYetValidNotice')}
               </Text>
             </Card.Content>
           </Card>
@@ -251,48 +253,48 @@ export default function GuardPassDetail() {
       {/* Approve entry — tag input dialog */}
       <Portal>
         <Dialog visible={tagOpen} onDismiss={() => !acting && setTagOpen(false)}>
-          <Dialog.Title>Visitor tag</Dialog.Title>
+          <Dialog.Title>{t('guard.pass.visitorTag')}</Dialog.Title>
           <Dialog.Content>
             <Text variant="bodyMedium" style={{ marginBottom: 8 }}>
-              Type the number from the physical visitor card you're giving to {pass.visitor_name}.
+              {t('guard.pass.tagHint', { name: pass.visitor_name })}
             </Text>
             <TextInput
               value={tag}
               onChangeText={setTag}
               mode="outlined"
-              placeholder="e.g. 042"
+              placeholder={t('guard.pass.tagPlaceholder')}
               autoCapitalize="characters"
               autoFocus
               maxLength={20}
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setTagOpen(false)} disabled={acting}>Cancel</Button>
+            <Button onPress={() => setTagOpen(false)} disabled={acting}>{t('common.cancel')}</Button>
             <Button onPress={handleApprove} loading={acting} disabled={acting || !tag.trim()}>
-              Approve entry
+              {t('guard.pass.approveEntry')}
             </Button>
           </Dialog.Actions>
         </Dialog>
 
         {/* Deny — reason dialog */}
         <Dialog visible={denyOpen} onDismiss={() => !acting && setDenyOpen(false)}>
-          <Dialog.Title>Deny entry</Dialog.Title>
+          <Dialog.Title>{t('guard.pass.denyEntry')}</Dialog.Title>
           <Dialog.Content>
             <Text variant="bodyMedium" style={{ marginBottom: 8 }}>
-              Reason (visible to the host):
+              {t('guard.pass.denyReasonHint')}
             </Text>
             <TextInput
               value={denyReason}
               onChangeText={setDenyReason}
               mode="outlined"
-              placeholder="e.g. Wrong plate, visitor refused ID check"
+              placeholder={t('guard.pass.denyPlaceholder')}
               multiline
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setDenyOpen(false)} disabled={acting}>Cancel</Button>
+            <Button onPress={() => setDenyOpen(false)} disabled={acting}>{t('common.cancel')}</Button>
             <Button onPress={handleDeny} loading={acting} disabled={acting || !denyReason.trim()} textColor="#ef4444">
-              Deny entry
+              {t('guard.pass.denyEntry')}
             </Button>
           </Dialog.Actions>
         </Dialog>

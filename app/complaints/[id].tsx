@@ -1,5 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -55,18 +56,20 @@ type Report = {
   updates: Update[];
 };
 
+// `label` values are i18n keys — render with t(s.label).
 const STATUS_META: Record<string, { bg: string; fg: string; label: string }> = {
-  open: { bg: '#fef3c7', fg: '#92400e', label: 'Open' },
-  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
+  open: { bg: '#fef3c7', fg: '#92400e', label: 'status.open' },
+  in_progress: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
   // Residents see 'escalated' as plain 'In progress' — the term is admin-side vocabulary.
-  escalated: { bg: '#dbeafe', fg: '#1d4ed8', label: 'In progress' },
-  resolved: { bg: '#dcfce7', fg: '#15803d', label: 'Resolved' },
-  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+  escalated: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.inProgress' },
+  resolved: { bg: '#dcfce7', fg: '#15803d', label: 'status.resolved' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.closed' },
 };
 
 export default function ReportDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +105,7 @@ export default function ReportDetailScreen() {
       });
       setReport(data.report);
     } catch {
-      Alert.alert('Could not confirm', 'Check your connection and try again.');
+      Alert.alert(t('complaints.errors.couldNotConfirm'), t('complaints.errors.checkConnection'));
     }
     setResolveBusy(false);
   }
@@ -121,9 +124,9 @@ export default function ReportDetailScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        Alert.alert('Could not submit', first?.[0] ?? 'Please add a short reason.');
+        Alert.alert(t('complaints.errors.couldNotSubmit'), first?.[0] ?? t('complaints.errors.addReason'));
       } else {
-        Alert.alert('Could not submit', 'Check your connection and try again.');
+        Alert.alert(t('complaints.errors.couldNotSubmit'), t('complaints.errors.checkConnection'));
       }
     }
     setResolveBusy(false);
@@ -132,7 +135,7 @@ export default function ReportDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Complaint" />
+        <PurpleHeader title={t('complaints.complaint')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -140,11 +143,11 @@ export default function ReportDetailScreen() {
   if (!report) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Complaint" />
+        <PurpleHeader title={t('complaints.complaint')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Complaint not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('complaints.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -155,7 +158,7 @@ export default function ReportDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Complaint" />
+      <PurpleHeader title={t('complaints.complaint')} />
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
         keyboardShouldPersistTaps="handled">
@@ -169,7 +172,7 @@ export default function ReportDetailScreen() {
                 {report.category ? `${report.category} · ` : ''}{report.location}
               </Text>
               <Text variant="bodySmall" style={styles.meta}>
-                Filed {new Date(report.created_at).toLocaleString()}
+                {t('complaints.filedDate', { date: new Date(report.created_at).toLocaleString() })}
               </Text>
 
               <StatusStepper status={report.status} />
@@ -183,10 +186,10 @@ export default function ReportDetailScreen() {
                 <Icon source="tools" size={22} color={PRIMARY} />
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyMedium" style={{ fontWeight: '600', color: PRIMARY }}>
-                    Being worked on by the JMB
+                    {t('complaints.beingWorkedOn')}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                    Your complaint was escalated to a maintenance task.
+                    {t('complaints.escalatedDesc')}
                   </Text>
                 </View>
                 {report.escalated_task?.public ? (
@@ -199,7 +202,7 @@ export default function ReportDetailScreen() {
                         params: { id: report.escalated_task!.id },
                       })
                     }>
-                    View progress
+                    {t('complaints.viewProgress')}
                   </Button>
                 ) : null}
               </Card.Content>
@@ -215,7 +218,7 @@ export default function ReportDetailScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="bodyMedium" style={styles.postAuthor}>
-                    {report.reporter.name ?? 'You'}
+                    {report.reporter.name ?? t('complaints.you')}
                   </Text>
                   <Text variant="bodySmall" style={styles.postTime}>
                     {new Date(report.created_at).toLocaleString()}
@@ -246,7 +249,7 @@ export default function ReportDetailScreen() {
                         </Text>
                         {isAdminPost ? (
                           <View style={styles.jmbBadge}>
-                            <Text style={styles.jmbBadgeText}>JMB</Text>
+                            <Text style={styles.jmbBadgeText}>{t('complaints.jmb')}</Text>
                           </View>
                         ) : null}
                       </View>
@@ -257,14 +260,14 @@ export default function ReportDetailScreen() {
                   </View>
                   {u.status_changed_to ? (
                     <View style={styles.statusChangeRow}>
-                      <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
+                      <Text variant="bodySmall" style={{ opacity: 0.65 }}>{t('status.changedTo')}</Text>
                       <View style={[styles.statusPill, {
                         backgroundColor: STATUS_META[u.status_changed_to]?.bg ?? '#f3f4f6',
                       }]}>
                         <Text style={[styles.statusText, {
                           color: STATUS_META[u.status_changed_to]?.fg ?? '#6b7280',
                         }]}>
-                          {STATUS_META[u.status_changed_to]?.label ?? u.status_changed_to}
+                          {STATUS_META[u.status_changed_to] ? t(STATUS_META[u.status_changed_to].label) : u.status_changed_to}
                         </Text>
                       </View>
                     </View>
@@ -286,12 +289,12 @@ export default function ReportDetailScreen() {
               onPress={() => router.push({ pathname: '/complaints/reply/[id]', params: { id: report.id } })}
               style={styles.replyBtn}
               contentStyle={styles.replyBtnContent}>
-              Reply
+              {t('complaints.reply')}
             </Button>
           ) : isResolved ? (
             <View style={styles.resolveBar}>
               <Text variant="bodySmall" style={styles.resolveBarPrompt}>
-                Is this issue fixed?
+                {t('complaints.isThisFixed')}
               </Text>
               <View style={styles.resolveBarRow}>
                 <Pressable
@@ -299,14 +302,14 @@ export default function ReportDetailScreen() {
                   disabled={resolveBusy}
                   style={[styles.resolveBtn, styles.resolveBtnDispute]}>
                   <Icon source="alert-circle-outline" size={16} color="#b91c1c" />
-                  <Text style={styles.resolveBtnDisputeText}>Still not fixed</Text>
+                  <Text style={styles.resolveBtnDisputeText}>{t('complaints.stillNotFixed')}</Text>
                 </Pressable>
                 <Pressable
                   onPress={handleConfirmResolved}
                   disabled={resolveBusy}
                   style={[styles.resolveBtn, styles.resolveBtnConfirm]}>
                   <Icon source="check-circle-outline" size={16} color="#fff" />
-                  <Text style={styles.resolveBtnConfirmText}>Confirm fixed</Text>
+                  <Text style={styles.resolveBtnConfirmText}>{t('complaints.confirmFixed')}</Text>
                 </Pressable>
               </View>
             </View>
@@ -314,7 +317,7 @@ export default function ReportDetailScreen() {
             <View style={styles.closedNotice}>
               <Icon source="lock-outline" size={16} color="#6b7280" />
               <Text variant="bodySmall" style={styles.closedNoticeText}>
-                This complaint is closed. Contact your JMB to reopen.
+                {t('complaints.closedNotice')}
               </Text>
             </View>
           )}
@@ -361,6 +364,7 @@ export default function ReportDetailScreen() {
 const STATUS_FLOW = ['open', 'in_progress', 'resolved', 'closed'];
 
 function StatusStepper({ status }: { status: Report['status'] }) {
+  const { t } = useTranslation();
   // 'escalated' means the JMB promoted it to a work order — for the
   // resident's progress bar that reads as "in progress".
   const effective = status === 'escalated' ? 'in_progress' : status;
@@ -392,7 +396,7 @@ function StatusStepper({ status }: { status: Report['status'] }) {
               ]} />
             </View>
             <Text style={[styles.stepLabel, isCurrent && styles.stepLabelCurrent]}>
-              {STATUS_META[s].label}
+              {t(STATUS_META[s].label)}
             </Text>
           </View>
         );
@@ -416,27 +420,28 @@ function DisputeModal({
   onSubmit: () => void;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   if (!visible) return null;
   return (
     <View style={styles.disputeBackdrop}>
       <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
       <View style={styles.disputeCard}>
-        <Text variant="titleMedium" style={styles.disputeTitle}>Still not fixed?</Text>
+        <Text variant="titleMedium" style={styles.disputeTitle}>{t('complaints.disputeTitle')}</Text>
         <Text variant="bodySmall" style={styles.disputeHint}>
-          Tell the JMB what's still wrong. The report will be reopened.
+          {t('complaints.disputeHint')}
         </Text>
         <TextInput
           value={text}
           onChangeText={onChangeText}
           multiline
-          placeholder="e.g. Water is still leaking, worse now"
+          placeholder={t('complaints.disputePlaceholder')}
           placeholderTextColor="#9ca3af"
           maxLength={5000}
           style={styles.disputeInput}
         />
         <View style={styles.disputeButtons}>
           <Pressable onPress={onCancel} style={[styles.disputeBtn, styles.disputeBtnCancel]}>
-            <Text style={styles.disputeBtnCancelText}>Cancel</Text>
+            <Text style={styles.disputeBtnCancelText}>{t('common.cancel')}</Text>
           </Pressable>
           <Pressable
             onPress={onSubmit}
@@ -446,7 +451,7 @@ function DisputeModal({
               styles.disputeBtnSubmit,
               (busy || !text.trim()) && styles.disputeBtnSubmitDisabled,
             ]}>
-            <Text style={styles.disputeBtnSubmitText}>{busy ? 'Submitting...' : 'Submit'}</Text>
+            <Text style={styles.disputeBtnSubmitText}>{busy ? t('complaints.submitting') : t('complaints.submit')}</Text>
           </Pressable>
         </View>
       </View>

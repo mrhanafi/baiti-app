@@ -1,6 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -53,6 +54,7 @@ type Slot = {
 export default function FacilityDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [facility, setFacility] = useState<Facility | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,18 +107,18 @@ export default function FacilityDetailScreen() {
       });
       const status = data.booking.status;
       Alert.alert(
-        status === 'pending' ? 'Booking submitted' : 'Booking confirmed',
+        status === 'pending' ? t('facility.bookingSubmitted') : t('facility.bookingConfirmed'),
         status === 'pending'
-          ? `Please bring RM ${facility.deposit_amount.toFixed(2)} cash to JMB office to confirm.`
-          : 'See you there!',
-        [{ text: 'OK', onPress: () => router.push('/facility/bookings') }],
+          ? t('facility.bringDeposit', { amount: facility.deposit_amount.toFixed(2) })
+          : t('facility.seeYouThere'),
+        [{ text: t('facility.ok'), onPress: () => router.push('/facility/bookings') }],
       );
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        setError(first?.[0] ?? 'Could not book this slot.');
+        setError(first?.[0] ?? t('facility.couldNotBook'));
       } else {
-        setError('Could not reach the server.');
+        setError(t('facility.couldNotReachServer'));
       }
     }
     setSubmitting(false);
@@ -125,7 +127,7 @@ export default function FacilityDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Facility" />
+        <PurpleHeader title={t('facility.detailTitle')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -133,11 +135,11 @@ export default function FacilityDetailScreen() {
   if (!facility) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Facility" />
+        <PurpleHeader title={t('facility.detailTitle')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Facility not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('facility.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -180,10 +182,10 @@ export default function FacilityDetailScreen() {
               <View style={styles.maintenanceBanner}>
                 <Icon source="wrench" size={20} color="#fff" />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.maintenanceTitle}>Closed for maintenance</Text>
+                  <Text style={styles.maintenanceTitle}>{t('facility.closedForMaintenance')}</Text>
                   <Text style={styles.maintenanceBody}>
-                    {facility.closed_reason ? facility.closed_reason : 'Under maintenance.'}
-                    {facility.closed_until ? ` Reopens ${new Date(facility.closed_until).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}.` : ''}
+                    {facility.closed_reason ? facility.closed_reason : t('facility.underMaintenance')}
+                    {facility.closed_until ? ` ${t('facility.reopensOn', { date: new Date(facility.closed_until).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) })}` : ''}
                   </Text>
                 </View>
               </View>
@@ -191,7 +193,7 @@ export default function FacilityDetailScreen() {
               <Card style={[styles.card, { backgroundColor: '#f3f4f6' }]}>
                 <Card.Content>
                   <Text variant="bodySmall" style={{ textAlign: 'center', opacity: 0.75 }}>
-                    No booking needed — just drop by during operating hours.
+                    {t('facility.openAccessNotice')}
                   </Text>
                 </Card.Content>
               </Card>
@@ -203,14 +205,14 @@ export default function FacilityDetailScreen() {
                     <Card.Content style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <Icon source="cash" size={20} color="#92400e" />
                       <Text variant="bodySmall" style={{ color: '#92400e', flex: 1 }}>
-                        Deposit RM {facility.deposit_amount.toFixed(2)} cash at JMB office. Booking pending until paid.
+                        {t('facility.depositNotice', { amount: facility.deposit_amount.toFixed(2) })}
                       </Text>
                     </Card.Content>
                   </Card>
                 ) : null}
 
                 {/* Date picker */}
-                <Text variant="titleSmall" style={styles.section}>Pick a date</Text>
+                <Text variant="titleSmall" style={styles.section}>{t('facility.pickDate')}</Text>
                 <Pressable
                   style={styles.datePicker}
                   onPress={() => setShowDatePicker(true)}>
@@ -234,12 +236,12 @@ export default function FacilityDetailScreen() {
                 ) : null}
 
                 {/* Slot grid */}
-                <Text variant="titleSmall" style={styles.section}>Available slots</Text>
+                <Text variant="titleSmall" style={styles.section}>{t('facility.availableSlots')}</Text>
                 {slotsLoading ? (
                   <ActivityIndicator style={{ marginTop: 12 }} />
                 ) : slots.length === 0 ? (
                   <Text variant="bodySmall" style={styles.emptySlots}>
-                    Closed on this day, or no slots available.
+                    {t('facility.noSlots')}
                   </Text>
                 ) : (
                   <View style={styles.slotsGrid}>
@@ -263,7 +265,7 @@ export default function FacilityDetailScreen() {
                             {formatTime(s.start)}
                           </Text>
                           {!s.available && s.taken > 0 ? (
-                            <Text style={styles.slotSubText}>Full</Text>
+                            <Text style={styles.slotSubText}>{t('facility.full')}</Text>
                           ) : facility.capacity > 1 ? (
                             <Text style={[styles.slotSubText, isSelected && { color: '#fff' }]}>
                               {s.taken}/{facility.capacity}
@@ -279,12 +281,12 @@ export default function FacilityDetailScreen() {
                 {selectedSlot ? (
                   <Card style={[styles.card, { marginTop: 16 }]}>
                     <Card.Content>
-                      <Text variant="titleSmall" style={styles.section}>Notes (optional)</Text>
+                      <Text variant="titleSmall" style={styles.section}>{t('facility.notesOptional')}</Text>
                       <TextInput
                         value={notes}
                         onChangeText={setNotes}
                         multiline
-                        placeholder="e.g. small birthday party"
+                        placeholder={t('facility.notesPlaceholder')}
                         placeholderTextColor="#9ca3af"
                         maxLength={1000}
                         style={styles.notesInput}
@@ -298,7 +300,7 @@ export default function FacilityDetailScreen() {
                         disabled={submitting}
                         style={{ marginTop: 12 }}
                         contentStyle={{ paddingVertical: 6 }}>
-                        {facility.requires_approval ? 'Submit booking' : 'Confirm booking'}
+                        {facility.requires_approval ? t('facility.submitBooking') : t('facility.confirmBooking')}
                       </Button>
                     </Card.Content>
                   </Card>
@@ -313,21 +315,19 @@ export default function FacilityDetailScreen() {
 }
 
 function OperatingHours({ hours }: { hours: Record<string, [string, string] | undefined> | null }) {
+  const { t } = useTranslation();
   if (!hours) return null;
-  const days = [
-    ['mon', 'Mon'], ['tue', 'Tue'], ['wed', 'Wed'], ['thu', 'Thu'],
-    ['fri', 'Fri'], ['sat', 'Sat'], ['sun', 'Sun'],
-  ] as const;
+  const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
   return (
     <View style={styles.hoursTable}>
-      <Text variant="titleSmall" style={{ fontWeight: '600', marginBottom: 6 }}>Operating hours</Text>
-      {days.map(([k, label]) => {
+      <Text variant="titleSmall" style={{ fontWeight: '600', marginBottom: 6 }}>{t('facility.operatingHours')}</Text>
+      {days.map((k) => {
         const h = hours[k];
         return (
           <View key={k} style={styles.hoursRow}>
-            <Text style={styles.hoursDay}>{label}</Text>
+            <Text style={styles.hoursDay}>{t(`facility.days.${k}`)}</Text>
             <Text style={styles.hoursTime}>
-              {h && h.length === 2 ? `${h[0]} – ${h[1]}` : 'Closed'}
+              {h && h.length === 2 ? `${h[0]} – ${h[1]}` : t('facility.closed')}
             </Text>
           </View>
         );

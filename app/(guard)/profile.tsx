@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, Card, List, Switch, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,26 +12,27 @@ const PRIMARY_TINT = '#EEEDFD';
 export default function GuardProfileScreen() {
   const { shift, endShift, unpair } = useGuardSession();
   const { mode, setMode } = useThemePref();
+  const { t } = useTranslation();
   const isDark = mode === 'dark';
 
   function handleEndShift() {
     Alert.alert(
-      'End shift?',
-      `${shift?.staffName ?? 'Current guard'} will be signed out. The next guard will need to tap their name.`,
+      t('guard.profile.endShiftTitle'),
+      t('guard.profile.endShiftBody', { name: shift?.staffName ?? t('guard.profile.currentGuard') }),
       [
-        { text: 'Stay on shift', style: 'cancel' },
-        { text: 'End shift', style: 'destructive', onPress: () => endShift() },
+        { text: t('guard.profile.stayOnShift'), style: 'cancel' },
+        { text: t('guard.profile.endShift'), style: 'destructive', onPress: () => endShift() },
       ],
     );
   }
 
   function handleUnpair() {
     Alert.alert(
-      'Unpair this device?',
-      'This removes the device link with your JMB. You will need a new pairing code to use this tablet again.',
+      t('guard.profile.unpairTitle'),
+      t('guard.profile.unpairBody'),
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Unpair', style: 'destructive', onPress: () => unpair() },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('guard.profile.unpair'), style: 'destructive', onPress: () => unpair() },
       ],
     );
   }
@@ -45,16 +47,16 @@ export default function GuardProfileScreen() {
           <Card.Content style={styles.row}>
             <Avatar.Text label={initial} size={64} style={{ backgroundColor: PRIMARY_TINT }} color={PRIMARY} />
             <View style={{ flex: 1 }}>
-              <Text variant="titleMedium">{shift?.staffName ?? 'No one on shift'}</Text>
-              <Text variant="bodySmall" style={styles.subtle}>On duty since {startedAt}</Text>
+              <Text variant="titleMedium">{shift?.staffName ?? t('guard.profile.noOneOnShift')}</Text>
+              <Text variant="bodySmall" style={styles.subtle}>{t('guard.profile.onDutySince', { time: startedAt })}</Text>
             </View>
           </Card.Content>
         </Card>
 
         <List.Section style={styles.list}>
-          <List.Subheader>Appearance</List.Subheader>
+          <List.Subheader>{t('guard.profile.appearance')}</List.Subheader>
           <List.Item
-            title="Dark mode"
+            title={t('guard.profile.darkMode')}
             left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
             right={() => <Switch value={isDark} onValueChange={(v) => setMode(v ? 'dark' : 'light')} />}
           />
@@ -66,7 +68,7 @@ export default function GuardProfileScreen() {
           onPress={handleEndShift}
           style={styles.action}
           contentStyle={styles.actionContent}>
-          End shift
+          {t('guard.profile.endShift')}
         </Button>
 
         <Button
@@ -76,7 +78,7 @@ export default function GuardProfileScreen() {
           textColor="#ef4444"
           style={styles.action}
           contentStyle={styles.actionContent}>
-          Unpair this device
+          {t('guard.profile.unpairDevice')}
         </Button>
       </ScrollView>
     </SafeAreaView>

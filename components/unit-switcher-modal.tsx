@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { Icon, Modal, Portal, Text } from 'react-native-paper';
 
@@ -20,13 +21,14 @@ type Props = {
  * tab. Selection persists across app launches (handled by the parent).
  */
 export function UnitSwitcherModal({ visible, units, selectedUnitId, onDismiss, onSelect }: Props) {
+  const { t } = useTranslation();
   return (
     <Portal>
       <Modal visible={visible} onDismiss={onDismiss} contentContainerStyle={styles.modal}>
         <View style={styles.handle} />
-        <Text style={styles.title}>Switch home</Text>
+        <Text style={styles.title}>{t('common.switchHome')}</Text>
         <Text style={styles.subtitle}>
-          {units.length === 1 ? 'You have 1 home' : `You have ${units.length} homes`}
+          {units.length === 1 ? t('common.oneHome') : t('common.manyHomes', { count: units.length })}
         </Text>
 
         <FlatList
@@ -48,7 +50,7 @@ export function UnitSwitcherModal({ visible, units, selectedUnitId, onDismiss, o
                 </View>
                 <View style={styles.info}>
                   <Text style={styles.unitName} numberOfLines={1}>
-                    Unit {item.unit_number}
+                    {t('common.unit', { number: item.unit_number })}
                     {item.block_name ? ` · ${item.block_name}` : ''}
                   </Text>
                   <Text style={styles.propertyName} numberOfLines={1}>

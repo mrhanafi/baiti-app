@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   FlatList,
@@ -29,7 +30,10 @@ type SosEvent = {
 };
 
 const CATEGORY_LABEL: Record<SosEvent['category'], string> = {
-  medical: 'Medical', fire: 'Fire', security: 'Security', other: 'Other',
+  medical: 'guard.sos.categories.medical',
+  fire: 'guard.sos.categories.fire',
+  security: 'guard.sos.categories.security',
+  other: 'guard.sos.categories.other',
 };
 
 const CATEGORY_ICON: Record<SosEvent['category'], string> = {
@@ -39,6 +43,7 @@ const CATEGORY_ICON: Record<SosEvent['category'], string> = {
 export default function GuardSosScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { isTablet, isLandscape, contentMaxWidth } = useResponsive();
   const [events, setEvents] = useState<SosEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,9 +79,9 @@ export default function GuardSosScreen() {
       setEvents((prev) => prev.map((e) => e.id === data.event.id ? data.event : e));
     } catch (err) {
       const msg = err instanceof ApiError
-        ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? `Failed (${err.status}).`
-        : 'Could not acknowledge.';
-      Alert.alert('Acknowledge failed', msg);
+        ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? t('guard.sos.failedWithStatus', { status: err.status })
+        : t('guard.sos.couldNotAcknowledge');
+      Alert.alert(t('guard.sos.acknowledgeFailed'), msg);
     }
     setBusyId(null);
   }
@@ -100,9 +105,9 @@ export default function GuardSosScreen() {
       setResolveNotes('');
     } catch (err) {
       const msg = err instanceof ApiError
-        ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? `Failed (${err.status}).`
-        : 'Could not resolve.';
-      Alert.alert('Resolve failed', msg);
+        ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? t('guard.sos.failedWithStatus', { status: err.status })
+        : t('guard.sos.couldNotResolve');
+      Alert.alert(t('guard.sos.resolveFailed'), msg);
     }
     setBusyId(null);
   }
@@ -124,7 +129,7 @@ export default function GuardSosScreen() {
         <View style={styles.center}>
           <Icon source="check-circle-outline" size={64} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 16, opacity: 0.7 }}>
-            No active SOS calls.
+            {t('guard.sos.noActiveCalls')}
           </Text>
         </View>
       ) : (
@@ -166,13 +171,14 @@ export default function GuardSosScreen() {
 
 function Header({ onBack, count }: { onBack: () => void; count: number }) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   return (
     <View style={[headerStyles.bar, { paddingTop: insets.top + 12 }]}>
       <Pressable onPress={onBack} style={headerStyles.backBtn}>
         <Icon source="arrow-left" size={24} color="#fff" />
       </Pressable>
       <Text style={headerStyles.title}>
-        {count > 0 ? `🚨 ${count} ACTIVE SOS` : 'SOS — All Clear'}
+        {count > 0 ? t('guard.sos.activeCount', { count }) : t('guard.sos.allClear')}
       </Text>
       <View style={{ width: 32 }} />
     </View>
@@ -190,6 +196,7 @@ function SosCard({
   onAcknowledge: () => void;
   onResolve: () => void;
 }) {
+  const { t } = useTranslation();
   const triggered = new Date(event.triggered_at);
   const minsAgo = Math.max(0, Math.floor((Date.now() - triggered.getTime()) / 60000));
 
@@ -204,16 +211,16 @@ function SosCard({
       <View style={cardStyles.headerRow}>
         <View style={cardStyles.catBadge}>
           <Icon source={CATEGORY_ICON[event.category]} size={20} color="#dc2626" />
-          <Text style={cardStyles.catText}>{CATEGORY_LABEL[event.category]}</Text>
+          <Text style={cardStyles.catText}>{t(CATEGORY_LABEL[event.category])}</Text>
         </View>
         <Text style={cardStyles.timeText}>
-          {minsAgo === 0 ? 'just now' : `${minsAgo}m ago`}
+          {minsAgo === 0 ? t('guard.sos.justNow') : t('guard.sos.minsAgo', { mins: minsAgo })}
         </Text>
       </View>
 
-      <Text style={cardStyles.residentName}>{event.resident.name ?? 'Unknown'}</Text>
+      <Text style={cardStyles.residentName}>{event.resident.name ?? t('guard.sos.unknown')}</Text>
       <Text style={cardStyles.unitText}>
-        Unit {event.unit.unit_number ?? '—'}
+        {t('common.unit', { number: event.unit.unit_number ?? '—' })}
         {event.resident.phone ? ` · ${event.resident.phone}` : ''}
       </Text>
 
@@ -221,7 +228,7 @@ function SosCard({
         <View style={cardStyles.respondingPill}>
           <Icon source="account-arrow-right" size={14} color="#1d4ed8" />
           <Text style={cardStyles.respondingText}>
-            Responding by {event.acknowledger_name ?? '—'}
+            {t('guard.sos.respondingBy', { name: event.acknowledger_name ?? '—' })}
           </Text>
         </View>
       ) : null}
@@ -230,7 +237,7 @@ function SosCard({
         {event.resident.phone ? (
           <Pressable onPress={callResident} style={[cardStyles.btn, cardStyles.btnCall]}>
             <Icon source="phone" size={18} color="#15803d" />
-            <Text style={cardStyles.btnCallText}>Call</Text>
+            <Text style={cardStyles.btnCallText}>{t('guard.sos.call')}</Text>
           </Pressable>
         ) : null}
 
@@ -240,7 +247,7 @@ function SosCard({
             disabled={busy}
             style={[cardStyles.btn, cardStyles.btnAck, busy && { opacity: 0.6 }]}>
             <Icon source="check" size={18} color="#fff" />
-            <Text style={cardStyles.btnAckText}>Acknowledge & respond</Text>
+            <Text style={cardStyles.btnAckText}>{t('guard.sos.acknowledge')}</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -248,7 +255,7 @@ function SosCard({
             disabled={busy}
             style={[cardStyles.btn, cardStyles.btnResolve, busy && { opacity: 0.6 }]}>
             <Icon source="check-all" size={18} color="#fff" />
-            <Text style={cardStyles.btnResolveText}>Mark resolved</Text>
+            <Text style={cardStyles.btnResolveText}>{t('guard.sos.markResolved')}</Text>
           </Pressable>
         )}
       </View>
@@ -271,27 +278,28 @@ function ResolveModal({
   onSubmit: () => void;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel} statusBarTranslucent>
       <View style={modalStyles.backdrop}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
         <View style={modalStyles.card}>
-          <Text variant="titleMedium" style={modalStyles.title}>Resolve SOS</Text>
+          <Text variant="titleMedium" style={modalStyles.title}>{t('guard.sos.resolveTitle')}</Text>
           <Text variant="bodySmall" style={modalStyles.hint}>
-            What happened? This goes into the incident log.
+            {t('guard.sos.resolveHint')}
           </Text>
           <TextInput
             value={notes}
             onChangeText={onChangeNotes}
             multiline
-            placeholder="e.g. Escorted to clinic / False alarm"
+            placeholder={t('guard.sos.resolvePlaceholder')}
             placeholderTextColor="#9ca3af"
             maxLength={5000}
             style={modalStyles.input}
           />
           <View style={modalStyles.buttons}>
             <Pressable onPress={onCancel} style={[modalStyles.btn, modalStyles.btnCancel]}>
-              <Text style={modalStyles.btnCancelText}>Cancel</Text>
+              <Text style={modalStyles.btnCancelText}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={onSubmit}
@@ -301,7 +309,7 @@ function ResolveModal({
                 modalStyles.btnSubmit,
                 (busy || !notes.trim()) && { opacity: 0.5 },
               ]}>
-              <Text style={modalStyles.btnSubmitText}>{busy ? 'Saving...' : 'Resolve'}</Text>
+              <Text style={modalStyles.btnSubmitText}>{busy ? t('guard.sos.saving') : t('guard.sos.resolve')}</Text>
             </Pressable>
           </View>
         </View>

@@ -1,5 +1,6 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 
@@ -25,6 +26,7 @@ export default function CompleteProfileScreen() {
     inviteOrg?: string;
   }>();
   const { completeRegistration } = useAuth();
+  const { t } = useTranslation();
 
   const invited = !!inviteOrg;
 
@@ -54,13 +56,13 @@ export default function CompleteProfileScreen() {
         if (err.status === 422) {
           const msg = err.body?.errors?.email?.[0]
             ?? err.body?.errors?.registration_token?.[0]
-            ?? 'Invalid details. Try again.';
+            ?? t('auth.errors.invalidDetails');
           setError(msg);
         } else {
-          setError(`Could not finish registration (${err.status}).`);
+          setError(t('auth.errors.registrationFailed', { status: err.status }));
         }
       } else {
-        setError('Could not reach the server.');
+        setError(t('auth.errors.serverUnreachable'));
       }
     }
     setSubmitting(false);
@@ -72,24 +74,25 @@ export default function CompleteProfileScreen() {
       style={styles.container}>
       <View style={styles.inner}>
         <Text variant="headlineMedium" style={styles.title}>
-          {invited ? 'Welcome!' : 'Almost done'}
+          {invited ? t('auth.welcomeInvited') : t('auth.almostDone')}
         </Text>
         {invited ? (
           <Text variant="bodyMedium" style={styles.subtitle}>
-            <Text style={styles.email}>{inviteOrg}</Text> has
-            {inviteUnit ? ` unit ${inviteUnit}` : ' your home'} ready for you.
-            Check your details below — your home links automatically when you continue.
+            <Text style={styles.email}>{inviteOrg}</Text>{' '}
+            {inviteUnit
+              ? t('auth.invitedHasUnit', { unit: inviteUnit })
+              : t('auth.invitedHasHome')}
           </Text>
         ) : (
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Tell us a bit about you. Your email{'\n'}
+            {t('auth.tellUsAboutYou')}{'\n'}
             <Text style={styles.email}>{email}</Text>
-            {'\n'}is now verified.
+            {'\n'}{t('auth.isNowVerified')}
           </Text>
         )}
 
         <TextInput
-          label="Full name"
+          label={t('auth.fullName')}
           value={name}
           onChangeText={setName}
           autoCapitalize="words"
@@ -99,13 +102,13 @@ export default function CompleteProfileScreen() {
           mode="outlined"
         />
         <TextInput
-          label="Phone number (optional)"
+          label={t('auth.phoneOptional')}
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           autoComplete="tel"
           textContentType="telephoneNumber"
-          placeholder="01X-XXXXXXX"
+          placeholder={t('auth.phonePlaceholder')}
           style={styles.input}
           mode="outlined"
         />
@@ -123,11 +126,11 @@ export default function CompleteProfileScreen() {
           disabled={submitting || !name.trim()}
           style={styles.button}
           contentStyle={styles.buttonContent}>
-          Continue
+          {t('auth.continue')}
         </Button>
 
         <Text variant="bodySmall" style={styles.legal}>
-          By tapping Continue, you agree to Baiti&apos;s Terms of Service and Privacy Policy.
+          {t('auth.legalNotice')}
         </Text>
       </View>
     </KeyboardAvoidingView>

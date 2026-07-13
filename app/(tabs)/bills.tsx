@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,6 +35,7 @@ export default function BillsScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -90,7 +92,7 @@ export default function BillsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <PurpleHeader title="Bills" />
+      <PurpleHeader title={t('bills.title')} />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -108,11 +110,11 @@ export default function BillsScreen() {
               <Icon source={showAllHomes ? 'home-group' : 'home-city'} size={16} color={PRIMARY} />
               <Text style={[styles.scopeChipText, { color: theme.colors.onSurface }]}>
                 {showAllHomes
-                  ? `All ${homes.length} homes`
-                  : `Unit ${activeHome?.unit_number ?? '—'}${activeHome?.property_name ? ` · ${activeHome.property_name}` : ''}`}
+                  ? t('bills.allHomes', { count: homes.length })
+                  : `${t('common.unit', { number: activeHome?.unit_number ?? '—' })}${activeHome?.property_name ? ` · ${activeHome.property_name}` : ''}`}
               </Text>
               <Text style={styles.scopeChipAction}>
-                {showAllHomes ? 'Show one' : 'Show all'}
+                {showAllHomes ? t('bills.showOne') : t('bills.showAll')}
               </Text>
             </Pressable>
           ) : null}
@@ -124,8 +126,8 @@ export default function BillsScreen() {
               <Icon source="receipt-text-outline" size={56} color="#9ca3af" />
               <Text variant="bodyMedium" style={styles.emptyText}>
                 {invoices.length === 0
-                  ? `No invoices yet.\nWhen your JMB issues one, it'll show up here.`
-                  : `No bills for this home yet.${hasMultipleHomes ? '\nTap the chip above to see all homes.' : ''}`}
+                  ? t('bills.emptyNoInvoices')
+                  : `${t('bills.emptyThisHome')}${hasMultipleHomes ? `\n${t('bills.emptyThisHomeHint')}` : ''}`}
               </Text>
             </View>
           ) : (
@@ -133,10 +135,10 @@ export default function BillsScreen() {
               {/* Outstanding summary */}
               {outstanding.length > 0 ? (
                 <View style={styles.summaryCard}>
-                  <Text style={styles.summaryLabel}>Outstanding</Text>
+                  <Text style={styles.summaryLabel}>{t('bills.outstanding')}</Text>
                   <Text style={styles.summaryAmount}>RM {totalOutstanding.toFixed(2)}</Text>
                   <Text style={styles.summaryMeta}>
-                    {outstanding.length} unpaid invoice{outstanding.length === 1 ? '' : 's'}
+                    {t('bills.unpaidInvoices', { count: outstanding.length })}
                   </Text>
                 </View>
               ) : null}
@@ -144,7 +146,7 @@ export default function BillsScreen() {
               {/* Outstanding list */}
               {outstanding.length > 0 ? (
                 <View style={styles.section}>
-                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>Unpaid</Text>
+                  <Text style={[styles.sectionTitle, { color: theme.colors.onSurfaceVariant }]}>{t('bills.unpaid')}</Text>
                   {outstanding.map((inv) => (
                     <InvoiceCard key={inv.id} invoice={inv} onPress={() => router.push(`/billing/${inv.id}` as any)} />
                   ))}
@@ -153,7 +155,7 @@ export default function BillsScreen() {
 
               {/* History — always shown so residents know where paid bills land */}
               <View style={styles.section}>
-                <Text style={styles.sectionTitle}>History</Text>
+                <Text style={styles.sectionTitle}>{t('bills.history')}</Text>
                 {history.length > 0 ? (
                   history.map((inv) => (
                     <InvoiceCard key={inv.id} invoice={inv} onPress={() => router.push(`/billing/${inv.id}` as any)} />
@@ -163,7 +165,7 @@ export default function BillsScreen() {
                     <Card.Content style={styles.historyEmptyContent}>
                       <Icon source="receipt-text-check-outline" size={36} color={theme.colors.onSurfaceVariant} />
                       <Text variant="bodySmall" style={[styles.historyEmptyText, { color: theme.colors.onSurfaceVariant }]}>
-                        No paid bills yet.{'\n'}Once you settle a bill, it lands here.
+                        {t('bills.emptyHistory')}
                       </Text>
                     </Card.Content>
                   </Card>
@@ -179,12 +181,14 @@ export default function BillsScreen() {
 
 function InvoiceCard({ invoice, onPress }: { invoice: Invoice; onPress: () => void }) {
   const theme = useTheme();
+  const { t } = useTranslation();
+  // `label` values are i18n keys — render with t(sc.label).
   const statusColors: Record<string, { bg: string; fg: string; label: string }> = {
-    issued: { bg: '#fef3c7', fg: '#92400e', label: 'Unpaid' },
-    overdue: { bg: '#fee2e2', fg: '#b91c1c', label: 'Overdue' },
-    paid: { bg: '#d1fae5', fg: '#065f46', label: 'Paid' },
-    cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'Cancelled' },
-    draft: { bg: '#f3f4f6', fg: '#6b7280', label: 'Draft' },
+    issued: { bg: '#fef3c7', fg: '#92400e', label: 'status.unpaid' },
+    overdue: { bg: '#fee2e2', fg: '#b91c1c', label: 'status.overdue' },
+    paid: { bg: '#d1fae5', fg: '#065f46', label: 'status.paid' },
+    cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.cancelled' },
+    draft: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.draft' },
   };
   const sc = statusColors[invoice.status] ?? statusColors.draft;
 
@@ -197,25 +201,25 @@ function InvoiceCard({ invoice, onPress }: { invoice: Invoice; onPress: () => vo
               <Text style={[styles.invoicePeriod, { color: theme.colors.onSurfaceVariant }]}>{invoice.period_label}</Text>
               <Text style={[styles.invoiceNumber, { color: theme.colors.onSurface }]}>{invoice.invoice_number}</Text>
               {invoice.unit_number ? (
-                <Text style={[styles.invoiceUnit, { color: theme.colors.onSurfaceVariant }]}>Unit {invoice.unit_number}</Text>
+                <Text style={[styles.invoiceUnit, { color: theme.colors.onSurfaceVariant }]}>{t('common.unit', { number: invoice.unit_number })}</Text>
               ) : null}
             </View>
             <View style={styles.invoiceRight}>
               <Text style={[styles.invoiceAmount, { color: theme.colors.onSurface }]}>RM {invoice.total.toFixed(2)}</Text>
               <View style={[styles.pill, { backgroundColor: sc.bg }]}>
-                <Text style={[styles.pillText, { color: sc.fg }]}>{sc.label}</Text>
+                <Text style={[styles.pillText, { color: sc.fg }]}>{t(sc.label)}</Text>
               </View>
             </View>
           </View>
           <View style={styles.invoiceMeta}>
             {invoice.status === 'overdue' ? (
               <Text style={styles.overdueText}>
-                ⚠ {invoice.days_overdue} day{invoice.days_overdue === 1 ? '' : 's'} overdue
+                {t('bills.daysOverdue', { count: invoice.days_overdue })}
               </Text>
             ) : invoice.status === 'paid' ? (
-              <Text style={styles.paidText}>Paid {invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : ''}</Text>
+              <Text style={styles.paidText}>{t('bills.paid', { date: invoice.paid_at ? new Date(invoice.paid_at).toLocaleDateString() : '' })}</Text>
             ) : (
-              <Text style={[styles.dueText, { color: theme.colors.onSurfaceVariant }]}>Due {new Date(invoice.due_date).toLocaleDateString()}</Text>
+              <Text style={[styles.dueText, { color: theme.colors.onSurfaceVariant }]}>{t('bills.due', { date: new Date(invoice.due_date).toLocaleDateString() })}</Text>
             )}
           </View>
         </Card.Content>

@@ -1,5 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Icon, IconButton, Text } from 'react-native-paper';
 import ImageView from 'react-native-image-viewing';
@@ -27,7 +28,7 @@ type TaskDetail = BoardTask & {
 
 type TimelineRow = { kind: 'date'; label: string } | { kind: 'item'; item: TaskUpdate };
 
-function toTimelineRows(updates: TaskUpdate[]): TimelineRow[] {
+function toTimelineRows(updates: TaskUpdate[], t: (key: string) => string): TimelineRow[] {
   const sorted = [...updates].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
@@ -39,9 +40,9 @@ function toTimelineRows(updates: TaskUpdate[]): TimelineRow[] {
   for (const u of sorted) {
     const day = new Date(u.created_at).toDateString();
     const label = day === today
-      ? 'Today'
+      ? t('board.today')
       : day === yesterday
-        ? 'Yesterday'
+        ? t('board.yesterday')
         : new Date(u.created_at).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
     if (label !== lastLabel) {
       rows.push({ kind: 'date', label });
@@ -56,6 +57,7 @@ function toTimelineRows(updates: TaskUpdate[]): TimelineRow[] {
 export default function BoardTaskDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +84,7 @@ export default function BoardTaskDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Maintenance" />
+        <PurpleHeader title={t('board.maintenance')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -90,11 +92,11 @@ export default function BoardTaskDetailScreen() {
   if (!task) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Maintenance" />
+        <PurpleHeader title={t('board.maintenance')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Task not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('board.taskNotFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -104,7 +106,7 @@ export default function BoardTaskDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Maintenance" />
+      <PurpleHeader title={t('board.maintenance')} />
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}>
        <TabletContainer>
 
@@ -113,21 +115,21 @@ export default function BoardTaskDetailScreen() {
               <View style={styles.titleRow}>
                 <Text variant="titleLarge" style={styles.title}>{task.title}</Text>
                 <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                  <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                  <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
                 </View>
               </View>
               <Text variant="bodySmall" style={styles.meta}>
                 {task.location ?? '—'}{task.category ? ` · ${task.category}` : ''}
               </Text>
               <Text variant="bodySmall" style={styles.meta}>
-                Started {new Date(task.started_at).toLocaleDateString()}
+                {t('board.startedDate', { date: new Date(task.started_at).toLocaleDateString() })}
                 {task.completed_at
-                  ? ` · Completed ${new Date(task.completed_at).toLocaleDateString()}`
+                  ? ` · ${t('board.completedDate', { date: new Date(task.completed_at).toLocaleDateString() })}`
                   : ''}
               </Text>
               {task.is_delayed ? (
                 <View style={styles.delayedBadge}>
-                  <Text style={styles.delayedText}>Behind schedule</Text>
+                  <Text style={styles.delayedText}>{t('board.behindSchedule')}</Text>
                 </View>
               ) : null}
               {task.description ? (
@@ -136,15 +138,15 @@ export default function BoardTaskDetailScreen() {
             </Card.Content>
           </Card>
 
-          <Text variant="titleSmall" style={styles.sectionTitle}>Progress updates</Text>
+          <Text variant="titleSmall" style={styles.sectionTitle}>{t('board.progressUpdates')}</Text>
           {task.updates.length === 0 ? (
             <View style={styles.emptyBlock}>
               <Icon source="timeline-clock-outline" size={36} color="#9ca3af" />
-              <Text variant="bodySmall" style={styles.emptyText}>No updates posted yet.</Text>
+              <Text variant="bodySmall" style={styles.emptyText}>{t('board.noUpdates')}</Text>
             </View>
           ) : (
             (() => {
-              const rows = toTimelineRows(task.updates);
+              const rows = toTimelineRows(task.updates, t);
               return rows.map((row, idx) => (
                 <View key={row.kind === 'date' ? `d-${row.label}` : row.item.id} style={styles.timelineRow}>
                   {/* Continuous rail: segment above the dot, dot, segment below */}
@@ -172,14 +174,14 @@ export default function BoardTaskDetailScreen() {
                         </Text>
                         {row.item.status_change ? (
                           <View style={styles.statusChangeRow}>
-                            <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
+                            <Text variant="bodySmall" style={{ opacity: 0.65 }}>{t('status.changedTo')}</Text>
                             <View style={[styles.statusPill, {
                               backgroundColor: TASK_STATUS[row.item.status_change]?.bg ?? '#f3f4f6',
                             }]}>
                               <Text style={[styles.statusText, {
                                 color: TASK_STATUS[row.item.status_change]?.fg ?? '#6b7280',
                               }]}>
-                                {TASK_STATUS[row.item.status_change]?.label ?? row.item.status_change}
+                                {TASK_STATUS[row.item.status_change] ? t(TASK_STATUS[row.item.status_change].label) : row.item.status_change}
                               </Text>
                             </View>
                           </View>

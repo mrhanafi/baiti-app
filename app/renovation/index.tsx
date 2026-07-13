@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, FAB, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,17 +28,19 @@ export type Permit = {
   created_at: string;
 };
 
+// `label` values are i18n keys — render with t(s.label).
 export const PERMIT_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
-  pending: { bg: '#fef3c7', fg: '#92400e', label: 'Pending review' },
-  approved: { bg: '#dbeafe', fg: '#1d4ed8', label: 'Pay deposit' },
-  rejected: { bg: '#fee2e2', fg: '#b91c1c', label: 'Rejected' },
-  active: { bg: '#dcfce7', fg: '#15803d', label: 'Active' },
-  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'Closed' },
+  pending: { bg: '#fef3c7', fg: '#92400e', label: 'status.pendingReview' },
+  approved: { bg: '#dbeafe', fg: '#1d4ed8', label: 'status.payDeposit' },
+  rejected: { bg: '#fee2e2', fg: '#b91c1c', label: 'status.rejected' },
+  active: { bg: '#dcfce7', fg: '#15803d', label: 'status.active' },
+  closed: { bg: '#f3f4f6', fg: '#6b7280', label: 'status.closed' },
 };
 
 export default function RenovationListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { isTablet, contentMaxWidth } = useResponsive();
   const [permits, setPermits] = useState<Permit[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +66,7 @@ export default function RenovationListScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Renovation Permits" />
+      <PurpleHeader title={t('renovation.title')} />
 
       {loading && !refreshing ? (
         <View style={styles.center}><ActivityIndicator /></View>
@@ -71,11 +74,10 @@ export default function RenovationListScreen() {
         <View style={styles.center}>
           <Icon source="hammer" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-            No renovation permits yet.
+            {t('renovation.emptyTitle')}
           </Text>
           <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.5, textAlign: 'center', paddingHorizontal: 32 }}>
-            Planning work on your home? Ask your JMB for a permit before the
-            contractor starts.
+            {t('renovation.emptyHint')}
           </Text>
         </View>
       ) : (
@@ -96,10 +98,10 @@ export default function RenovationListScreen() {
                 <Card.Content>
                   <View style={styles.titleRow}>
                     <Text variant="titleMedium" style={styles.title} numberOfLines={1}>
-                      Unit {item.unit_number ?? '—'}
+                      {t('common.unit', { number: item.unit_number ?? '—' })}
                     </Text>
                     <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                      <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                      <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
                     </View>
                   </View>
                   <Text variant="bodySmall" style={styles.meta} numberOfLines={2}>
@@ -111,7 +113,7 @@ export default function RenovationListScreen() {
                   </Text>
                   {item.status === 'approved' && item.deposit_amount !== null ? (
                     <Text variant="bodySmall" style={styles.depositDue}>
-                      Pay RM {item.deposit_amount.toFixed(2)} deposit at the management office
+                      {t('renovation.payDepositAtOffice', { amount: item.deposit_amount.toFixed(2) })}
                     </Text>
                   ) : null}
                 </Card.Content>
@@ -123,7 +125,7 @@ export default function RenovationListScreen() {
 
       <FAB
         icon="plus"
-        label="New request"
+        label={t('renovation.newRequest')}
         onPress={() => router.push('/renovation/new')}
         style={[styles.fab, { bottom: insets.bottom + 32 }]}
         color="#fff"

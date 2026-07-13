@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text, TextInput } from 'react-native-paper';
 
@@ -11,6 +12,7 @@ const PRIMARY = '#7367F0';
 export default function VerifyCodeScreen() {
   const { email } = useLocalSearchParams<{ email: string }>();
   const router = useRouter();
+  const { t } = useTranslation();
   const { verifyLoginCode, requestLoginCode, forgetRememberedIdentity } = useAuth();
 
   const [code, setCode] = useState('');
@@ -54,17 +56,17 @@ export default function VerifyCodeScreen() {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.status === 410) {
-          setError(err.body?.message ?? 'Code expired. Request a new one.');
+          setError(err.body?.message ?? t('auth.errors.codeExpired'));
           setResendIn(0); // unlock the resend button so they can retry
         } else if (err.status === 422) {
-          setError('Invalid code. Try again.');
+          setError(t('auth.errors.invalidCode'));
         } else if (err.status === 429) {
-          setError('Too many requests. Wait a moment.');
+          setError(t('auth.errors.tooManyRequests'));
         } else {
-          setError(`Verification failed (${err.status}).`);
+          setError(t('auth.errors.verificationFailed', { status: err.status }));
         }
       } else {
-        setError('Could not reach the server.');
+        setError(t('auth.errors.serverUnreachable'));
       }
     }
     setVerifying(false);
@@ -80,9 +82,9 @@ export default function VerifyCodeScreen() {
       setCode('');
     } catch (err) {
       if (err instanceof ApiError && err.status === 429) {
-        setError(err.body?.message ?? 'Please wait before requesting another code.');
+        setError(err.body?.message ?? t('auth.errors.resendWait'));
       } else {
-        setError('Could not send a new code.');
+        setError(t('auth.errors.resendFailed'));
       }
     }
     setResending(false);
@@ -99,17 +101,17 @@ export default function VerifyCodeScreen() {
       style={styles.container}>
       <View style={styles.inner}>
         <Text variant="headlineMedium" style={styles.title}>
-          Enter your code
+          {t('auth.verifyTitle')}
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
-          We sent a 6-digit code to{'\n'}
+          {t('auth.codeSentTo')}{'\n'}
           <Text style={styles.email}>{masked}</Text>
         </Text>
 
         <TextInput
-          label="6-digit code"
+          label={t('auth.codeLabel')}
           value={code}
-          onChangeText={(t) => setCode(t.replace(/[^0-9]/g, '').slice(0, 6))}
+          onChangeText={(v) => setCode(v.replace(/[^0-9]/g, '').slice(0, 6))}
           keyboardType="number-pad"
           maxLength={6}
           autoFocus
@@ -132,7 +134,7 @@ export default function VerifyCodeScreen() {
           disabled={verifying || code.length !== 6}
           style={styles.button}
           contentStyle={styles.buttonContent}>
-          Continue
+          {t('auth.continue')}
         </Button>
 
         <Button
@@ -142,12 +144,12 @@ export default function VerifyCodeScreen() {
           disabled={resending || resendIn > 0}
           style={styles.resendButton}
           textColor={PRIMARY}>
-          {resendIn > 0 ? `Resend code in ${resendIn}s` : 'Resend code'}
+          {resendIn > 0 ? t('auth.resendCodeIn', { seconds: resendIn }) : t('auth.resendCode')}
         </Button>
 
         <View style={styles.footer}>
           <Button mode="text" onPress={handleUseDifferentAccount} textColor="#6b7280">
-            Use a different account
+            {t('auth.useDifferentAccount')}
           </Button>
         </View>
       </View>

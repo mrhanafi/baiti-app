@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Chip, Icon, IconButton, Menu, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -52,6 +53,7 @@ export default function VisitorsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<Filter>('today');
   const [items, setItems] = useState<ListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -101,7 +103,7 @@ export default function VisitorsScreen() {
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <Text style={styles.title}>Visitors</Text>
+            <Text style={styles.title}>{t('visitors.title')}</Text>
             <View style={styles.chips}>
               {(['today', 'upcoming', 'past'] as Filter[]).map((f) => (
                 <Chip
@@ -111,7 +113,7 @@ export default function VisitorsScreen() {
                   style={[styles.chip, filter === f && styles.chipActive]}
                   textStyle={filter === f ? styles.chipTextActive : styles.chipText}
                   compact>
-                  {f === 'today' ? 'Today' : f === 'upcoming' ? 'Upcoming' : 'Past'}
+                  {t(`visitors.filters.${f}`)}
                 </Chip>
               ))}
             </View>
@@ -127,7 +129,7 @@ export default function VisitorsScreen() {
                 size={24}
                 containerColor="rgba(255,255,255,0.18)"
                 onPress={() => setFabOpen(true)}
-                accessibilityLabel="Create"
+                accessibilityLabel={t('visitors.create')}
               />
             }
             anchorPosition="bottom">
@@ -137,7 +139,7 @@ export default function VisitorsScreen() {
                 setFabOpen(false);
                 router.push('/visitor/new');
               }}
-              title="New visitor"
+              title={t('visitors.newVisitor')}
             />
             <Menu.Item
               leadingIcon="party-popper"
@@ -145,7 +147,7 @@ export default function VisitorsScreen() {
                 setFabOpen(false);
                 router.push('/event/new');
               }}
-              title="New event (invite link)"
+              title={t('visitors.newEvent')}
             />
           </Menu>
         </View>
@@ -159,10 +161,10 @@ export default function VisitorsScreen() {
         <View style={styles.center}>
           <Icon source="id-card" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            No {filter === 'today' ? "passes for today" : filter === 'upcoming' ? 'upcoming passes' : 'past passes'} yet.
+            {t(`visitors.empty.${filter}`)}
           </Text>
           <Text variant="bodySmall" style={styles.emptyHint}>
-            Tap + to create a visitor pass or event.
+            {t('visitors.emptyHint')}
           </Text>
         </View>
       ) : (
@@ -185,7 +187,9 @@ export default function VisitorsScreen() {
                     <View style={{ flex: 1 }}>
                       <Text variant="titleMedium" style={styles.passName}>{e.title}</Text>
                       <Text variant="bodySmall" style={styles.passMeta}>
-                        {e.guest_count}{e.max_guests ? ` / ${e.max_guests}` : ''} registered
+                        {e.max_guests
+                          ? t('visitors.registeredWithMax', { count: e.guest_count, max: e.max_guests })
+                          : t('visitors.registered', { count: e.guest_count })}
                       </Text>
                       <Text variant="bodySmall" style={styles.passMeta}>
                         {formatRange(e.valid_from, e.valid_until)}
@@ -193,7 +197,7 @@ export default function VisitorsScreen() {
                     </View>
                     <View style={[styles.statusPill, { backgroundColor: STATUS_COLOR[e.status === 'live' ? 'active' : e.status === 'upcoming' ? 'upcoming' : e.status === 'revoked' ? 'cancelled' : 'expired']?.bg ?? '#f3f4f6' }]}>
                       <Text style={[styles.statusText, { color: STATUS_COLOR[e.status === 'live' ? 'active' : e.status === 'upcoming' ? 'upcoming' : e.status === 'revoked' ? 'cancelled' : 'expired']?.fg ?? '#6b7280' }]}>
-                        {e.status}
+                        {t(`visitors.status.${e.status}`, { defaultValue: e.status })}
                       </Text>
                     </View>
                   </Card.Content>
@@ -217,12 +221,12 @@ export default function VisitorsScreen() {
                       </Text>
                       {p.is_walk_in ? (
                         <View style={styles.walkInBadge}>
-                          <Text style={styles.walkInBadgeText}>Walk-in</Text>
+                          <Text style={styles.walkInBadgeText}>{t('visitors.walkIn')}</Text>
                         </View>
                       ) : null}
                     </View>
                     <Text variant="bodySmall" style={styles.passMeta}>
-                      {prettyPurpose(p.purpose)}
+                      {t(`visitors.purposes.${p.purpose}`, { defaultValue: prettyPurpose(p.purpose) })}
                       {p.vehicle_plate ? ` · ${p.vehicle_plate}` : ''}
                     </Text>
                     <Text variant="bodySmall" style={styles.passMeta}>
@@ -235,7 +239,7 @@ export default function VisitorsScreen() {
                       { backgroundColor: STATUS_COLOR[p.status]?.bg ?? '#f3f4f6' },
                     ]}>
                     <Text style={[styles.statusText, { color: STATUS_COLOR[p.status]?.fg ?? '#6b7280' }]}>
-                      {p.status}
+                      {t(`visitors.status.${p.status}`, { defaultValue: p.status })}
                     </Text>
                   </View>
                 </Card.Content>

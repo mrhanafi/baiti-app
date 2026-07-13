@@ -4,6 +4,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Avatar, Button, Divider, HelperText, Text, TextInput } from 'react-native-paper';
@@ -11,6 +12,7 @@ import { ActivityIndicator, Avatar, Button, Divider, HelperText, Text, TextInput
 import { ApiError } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/session';
 import { getRememberedIdentity, RememberedIdentity } from '@/lib/auth/storage';
+import { LANGUAGES, setLocale, type LocaleCode } from '@/lib/i18n';
 
 const PRIMARY = '#7367F0';
 
@@ -27,8 +29,24 @@ if (WEB_CLIENT_ID) {
   });
 }
 
+function LangSwitch({ current, onPick }: { current: string; onPick: (c: LocaleCode) => void }) {
+  return (
+    <View style={styles.langRow}>
+      {LANGUAGES.map((lang, i) => (
+        <Text
+          key={lang.code}
+          onPress={() => onPick(lang.code)}
+          style={[styles.langOption, current === lang.code && styles.langOptionActive]}>
+          {i > 0 ? '  |  ' : ''}{lang.code === 'en' ? 'EN' : 'BM'}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export default function LoginScreen() {
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const { signInWithGoogle, requestLoginCode, forgetRememberedIdentity } = useAuth();
 
   const [remembered, setRemembered] = useState<RememberedIdentity | null>(null);
@@ -118,7 +136,7 @@ export default function LoginScreen() {
       } else if (err instanceof ApiError && err.status === 401) {
         setError('Google sign-in was rejected by the server.');
       } else {
-        setError('Google sign-in failed.');
+        setError(t('auth.errors.googleFailed'));
       }
     }
     setGoogleBusy(false);
@@ -138,9 +156,9 @@ export default function LoginScreen() {
       if (err instanceof ApiError && err.status === 429) {
         setError(err.body?.message ?? 'Too many requests. Wait a moment.');
       } else if (err instanceof ApiError && err.status === 422) {
-        setError('Please enter a valid email.');
+        setError(t('auth.errors.invalidEmail'));
       } else {
-        setError('Could not send a code. Try again.');
+        setError(t('auth.errors.codeSendFailed'));
       }
     }
     setSendingCode(false);
@@ -160,7 +178,7 @@ export default function LoginScreen() {
       if (err instanceof ApiError && err.status === 429) {
         setError(err.body?.message ?? 'Please wait before requesting another code.');
       } else {
-        setError('Could not send a code. Try again.');
+        setError(t('auth.errors.codeSendFailed'));
       }
     }
     setReloggingIn(false);
@@ -197,11 +215,12 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.container}>
         <View style={styles.inner}>
+          <LangSwitch current={i18n.language} onPick={(c) => void setLocale(c)} />
           <Text variant="headlineLarge" style={styles.title} onPress={handleTitleTap}>
-            Welcome back
+            {t('auth.welcomeBack')}
           </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            Sign in to continue
+            {t('auth.signInToContinue')}
           </Text>
 
           <Pressable onPress={handleContinueAs} disabled={reloggingIn} style={styles.identityCard}>
@@ -233,12 +252,12 @@ export default function LoginScreen() {
             disabled={reloggingIn}
             style={styles.button}
             contentStyle={styles.buttonContent}>
-            Continue as {firstName}
+            {t('auth.continueAs', { name: firstName })}
           </Button>
 
           <View style={styles.footer}>
             <Button mode="text" onPress={handleUseDifferentAccount} textColor="#6b7280">
-              Use a different account
+              {t('auth.useDifferentAccount')}
             </Button>
           </View>
         </View>
@@ -252,11 +271,12 @@ export default function LoginScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={styles.container}>
       <View style={styles.inner}>
+        <LangSwitch current={i18n.language} onPick={(c) => void setLocale(c)} />
         <Text variant="headlineLarge" style={styles.title} onPress={handleTitleTap}>
-          Welcome to Baiti
+          {t('auth.welcomeTitle')}
         </Text>
         <Text variant="bodyMedium" style={styles.subtitle}>
-          Sign in or sign up — same flow either way.
+          {t('auth.welcomeSubtitle')}
         </Text>
 
         {emailMode ? (
@@ -265,7 +285,7 @@ export default function LoginScreen() {
              tap Back to return to the choice screen. */
           <>
             <TextInput
-              label="Email address"
+              label={t('auth.emailAddress')}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
@@ -290,7 +310,7 @@ export default function LoginScreen() {
               disabled={sendingCode || !email.trim()}
               style={styles.button}
               contentStyle={styles.buttonContent}>
-              Send 6-digit code
+              {t('auth.sendCode')}
             </Button>
 
             <Button
@@ -298,7 +318,7 @@ export default function LoginScreen() {
               onPress={() => { setEmailMode(false); setError(null); }}
               textColor="#6b7280"
               style={{ marginTop: 8 }}>
-              Back
+              {t('auth.back')}
             </Button>
           </>
         ) : (
@@ -313,7 +333,7 @@ export default function LoginScreen() {
                 disabled={googleBusy}
                 style={styles.button}
                 contentStyle={styles.buttonContent}>
-                Continue with Google
+                {t('auth.continueWithGoogle')}
               </Button>
             ) : null}
 
@@ -337,13 +357,13 @@ export default function LoginScreen() {
               onPress={() => { setEmailMode(true); setError(null); }}
               style={styles.button}
               contentStyle={styles.buttonContent}>
-              Sign in with email
+              {t('auth.signInWithEmail')}
             </Button>
           </>
         )}
 
         <Text variant="bodySmall" style={styles.legal}>
-          New here? Just continue — we&apos;ll set up your account during the first sign-in.
+          {t('auth.newHereHint')}
         </Text>
 
 
@@ -356,6 +376,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
   inner: { flex: 1, justifyContent: 'center', padding: 24 },
   center: { alignItems: 'center', justifyContent: 'center' },
+  langRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 16 },
+  langOption: { color: '#9ca3af', fontSize: 13, fontWeight: '600' },
+  langOptionActive: { color: PRIMARY },
   title: { marginBottom: 4 },
   subtitle: { opacity: 0.6, marginBottom: 24 },
   input: { marginBottom: 12 },

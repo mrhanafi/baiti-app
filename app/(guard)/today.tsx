@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Searchbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,20 +25,13 @@ type Pass = {
   host: { name: string | null; phone: string | null };
 };
 
-const STATE_PILL: Record<string, { bg: string; fg: string; label: (p: Pass) => string }> = {
-  awaiting: { bg: '#dcfce7', fg: '#15803d', label: () => 'Awaiting' },
-  inside: {
-    bg: '#dbeafe',
-    fg: '#1d4ed8',
-    label: (p) =>
-      p.open_entry
-        ? `Inside · ${new Date(p.open_entry.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · #${p.open_entry.visit_tag}`
-        : 'Inside',
-  },
-  out: { bg: '#f3f4f6', fg: '#6b7280', label: () => 'Visit complete' },
-  upcoming: { bg: '#EEEDFD', fg: '#7367F0', label: () => 'Upcoming' },
-  expired: { bg: '#f3f4f6', fg: '#6b7280', label: () => 'Expired' },
-  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: () => 'Cancelled' },
+const STATE_PILL: Record<string, { bg: string; fg: string; label: string }> = {
+  awaiting: { bg: '#dcfce7', fg: '#15803d', label: 'guard.states.awaiting' },
+  inside: { bg: '#dbeafe', fg: '#1d4ed8', label: 'guard.states.inside' },
+  out: { bg: '#f3f4f6', fg: '#6b7280', label: 'guard.states.visitComplete' },
+  upcoming: { bg: '#EEEDFD', fg: '#7367F0', label: 'guard.states.upcoming' },
+  expired: { bg: '#f3f4f6', fg: '#6b7280', label: 'guard.states.expired' },
+  cancelled: { bg: '#fee2e2', fg: '#b91c1c', label: 'guard.states.cancelled' },
 };
 
 // Only TWO filters by design — minimises cognitive load for guards who may
@@ -49,6 +43,7 @@ type StateFilter = 'all' | 'inside';
 export default function GuardTodayScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [passes, setPasses] = useState<Pass[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -113,19 +108,19 @@ export default function GuardTodayScreen() {
   const subtitleText =
     search || stateFilter !== 'all'
       ? `${filtered.length} / ${passes.length}`
-      : `${passes.length} today`;
+      : t('guard.today.countToday', { count: passes.length });
 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.title}>Today's passes</Text>
+        <Text style={styles.title}>{t('guard.today.title')}</Text>
         <Text style={styles.subtitle}>{subtitleText}</Text>
       </View>
 
       {/* Search bar — filters as the guard types. Targets name, plate, visit
           tag. When non-empty, also auto-resets the segment to 'all'. */}
       <Searchbar
-        placeholder="Search name, plate, #tag"
+        placeholder={t('guard.today.searchPlaceholder')}
         value={search}
         onChangeText={handleSearchChange}
         style={styles.searchBar}
@@ -141,7 +136,7 @@ export default function GuardTodayScreen() {
           onPress={() => setStateFilter('all')}
           style={[styles.segment, stateFilter === 'all' && styles.segmentActiveAll]}>
           <Text style={[styles.segmentLabel, stateFilter === 'all' && styles.segmentLabelActive]}>
-            All
+            {t('guard.today.all')}
           </Text>
           <View style={[styles.badge, stateFilter === 'all' && styles.badgeActiveAll]}>
             <Text style={[styles.badgeText, stateFilter === 'all' && styles.badgeTextActiveAll]}>
@@ -159,7 +154,7 @@ export default function GuardTodayScreen() {
             color={stateFilter === 'inside' ? '#fff' : '#15803d'}
           />
           <Text style={[styles.segmentLabel, stateFilter === 'inside' && styles.segmentLabelActive]}>
-            Inside
+            {t('guard.today.inside')}
           </Text>
           <View style={[styles.badge, stateFilter === 'inside' && styles.badgeActiveInside]}>
             <Text style={[styles.badgeText, stateFilter === 'inside' && styles.badgeTextActiveInside]}>
@@ -175,14 +170,14 @@ export default function GuardTodayScreen() {
         <View style={styles.center}>
           <Icon source="calendar-blank-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65 }}>
-            No passes for today.
+            {t('guard.today.noPasses')}
           </Text>
         </View>
       ) : filtered.length === 0 ? (
         <View style={styles.center}>
           <Icon source="magnify" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-            No results
+            {t('guard.today.noResults')}
           </Text>
         </View>
       ) : (
@@ -193,6 +188,13 @@ export default function GuardTodayScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           renderItem={({ item }) => {
             const pill = STATE_PILL[item.visit_state] ?? STATE_PILL.expired;
+            const pillLabel =
+              item.visit_state === 'inside' && item.open_entry
+                ? t('guard.states.insideDetail', {
+                    time: new Date(item.open_entry.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    tag: item.open_entry.visit_tag,
+                  })
+                : t(pill.label);
             return (
               <Card style={styles.card}
                 onPress={() => router.push({ pathname: '/guard-pass/[id]', params: { id: item.id } })}>
@@ -203,17 +205,17 @@ export default function GuardTodayScreen() {
                   <View style={{ flex: 1 }}>
                     <Text variant="titleMedium" style={{ fontWeight: '600' }}>{item.visitor_name}</Text>
                     <Text variant="bodySmall" style={styles.meta}>
-                      {item.purpose.charAt(0).toUpperCase() + item.purpose.slice(1)}
+                      {t(`guard.purposes.${item.purpose}`, { defaultValue: item.purpose.charAt(0).toUpperCase() + item.purpose.slice(1) })}
                       {item.vehicle_plate ? ` · ${item.vehicle_plate}` : ''}
                     </Text>
                     <Text variant="bodySmall" style={styles.meta}>
-                      Unit {item.unit.unit_number} · {item.unit.property_name}
+                      {t('common.unit', { number: item.unit.unit_number })} · {item.unit.property_name}
                     </Text>
                     <Text variant="bodySmall" style={styles.meta}>
                       {formatRange(item.valid_from, item.valid_until)}
                     </Text>
                     <View style={[styles.statePill, { backgroundColor: pill.bg }]}>
-                      <Text style={[styles.stateText, { color: pill.fg }]}>{pill.label(item)}</Text>
+                      <Text style={[styles.stateText, { color: pill.fg }]}>{pillLabel}</Text>
                     </View>
                   </View>
                   <Icon source="chevron-right" size={22} color="#9ca3af" />

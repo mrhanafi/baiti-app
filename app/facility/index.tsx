@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,7 @@ export default function FacilityListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { isTablet } = useResponsive();
+  const { t } = useTranslation();
   const [items, setItems] = useState<Facility[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -55,7 +57,7 @@ export default function FacilityListScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Facilities" />
+      <PurpleHeader title={t('facility.title')} />
 
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -66,7 +68,7 @@ export default function FacilityListScreen() {
               mode="outlined"
               icon="calendar-check"
               onPress={() => router.push('/facility/bookings')}>
-              My bookings
+              {t('facility.myBookings')}
             </Button>
           </View>
 
@@ -76,7 +78,7 @@ export default function FacilityListScreen() {
             <View style={styles.center}>
               <Icon source="pool" size={56} color="#9ca3af" />
               <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center' }}>
-                No facilities available yet.{'\n'}Ask your JMB to set them up.
+                {t('facility.noFacilities')}
               </Text>
             </View>
           ) : (
@@ -98,7 +100,7 @@ export default function FacilityListScreen() {
                       <View style={styles.maintenanceBanner}>
                         <Icon source="wrench" size={14} color="#fff" />
                         <Text style={styles.maintenanceBannerText} numberOfLines={1}>
-                          Closed for maintenance
+                          {t('facility.closedForMaintenance')}
                         </Text>
                       </View>
                     ) : null}
@@ -112,17 +114,17 @@ export default function FacilityListScreen() {
                       <View style={styles.metaRow}>
                         {f.type === 'bookable' ? (
                           <View style={[styles.pill, { backgroundColor: '#dbeafe' }]}>
-                            <Text style={[styles.pillText, { color: '#1d4ed8' }]}>Bookable</Text>
+                            <Text style={[styles.pillText, { color: '#1d4ed8' }]}>{t('facility.bookable')}</Text>
                           </View>
                         ) : (
                           <View style={[styles.pill, { backgroundColor: '#f3f4f6' }]}>
-                            <Text style={[styles.pillText, { color: '#6b7280' }]}>Open access</Text>
+                            <Text style={[styles.pillText, { color: '#6b7280' }]}>{t('facility.openAccess')}</Text>
                           </View>
                         )}
                         {f.deposit_amount > 0 ? (
                           <View style={[styles.pill, { backgroundColor: '#fef3c7' }]}>
                             <Text style={[styles.pillText, { color: '#92400e' }]}>
-                              Deposit RM {f.deposit_amount.toFixed(0)}
+                              {t('facility.depositPill', { amount: f.deposit_amount.toFixed(0) })}
                             </Text>
                           </View>
                         ) : null}

@@ -1,19 +1,39 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError, apiFetch } from '@/lib/api/client';
 import { useGuardSession } from '@/lib/guard/session';
+import { LANGUAGES, setLocale, type LocaleCode } from '@/lib/i18n';
 
 const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
 
 type Staff = { id: string; name: string };
 
+// Guard tablets are shared devices — this row is the tablet's language
+// switch (same pattern as the login screen's LangSwitch).
+function LangSwitch({ current, onPick }: { current: string; onPick: (c: LocaleCode) => void }) {
+  return (
+    <View style={styles.langRow}>
+      {LANGUAGES.map((lang, i) => (
+        <Text
+          key={lang.code}
+          onPress={() => onPick(lang.code)}
+          style={[styles.langOption, current === lang.code && styles.langOptionActive]}>
+          {i > 0 ? '  |  ' : ''}{lang.code === 'en' ? 'EN' : 'BM'}
+        </Text>
+      ))}
+    </View>
+  );
+}
+
 export default function ShiftPickerScreen() {
   const insets = useSafeAreaInsets();
   const { startShift } = useGuardSession();
+  const { t, i18n } = useTranslation();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -25,7 +45,7 @@ export default function ShiftPickerScreen() {
         setStaff(data.staff ?? []);
       } catch (err) {
         if (!(err instanceof ApiError)) {
-          Alert.alert('Could not load staff', 'Check your connection.');
+          Alert.alert(t('guard.shiftPicker.loadFailedTitle'), t('guard.shiftPicker.loadFailedBody'));
         }
       }
       setLoading(false);
@@ -39,8 +59,8 @@ export default function ShiftPickerScreen() {
       await startShift(s.id, s.name);
       // Gate redirects to /(guard) when shift becomes active.
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Could not start shift.';
-      Alert.alert('Failed', msg);
+      const msg = err instanceof ApiError ? err.message : t('guard.shiftPicker.startFailed');
+      Alert.alert(t('guard.shiftPicker.failed'), msg);
     }
     setStarting(null);
   }
@@ -48,8 +68,9 @@ export default function ShiftPickerScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 24 }]}>
-        <Text style={styles.title}>Who's on shift?</Text>
-        <Text style={styles.subtitle}>Tap your name to start your shift.</Text>
+        <LangSwitch current={i18n.language} onPick={(c) => void setLocale(c)} />
+        <Text style={styles.title}>{t('guard.shiftPicker.title')}</Text>
+        <Text style={styles.subtitle}>{t('guard.shiftPicker.subtitle')}</Text>
       </View>
 
       {loading ? (
@@ -60,7 +81,7 @@ export default function ShiftPickerScreen() {
         <View style={styles.center}>
           <Icon source="account-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65, textAlign: 'center', paddingHorizontal: 32 }}>
-            No guard staff registered yet. Ask your JMB admin to add your name in the Guards section.
+            {t('guard.shiftPicker.noStaff')}
           </Text>
         </View>
       ) : (
@@ -95,6 +116,10 @@ const styles = StyleSheet.create({
   header: { backgroundColor: PRIMARY, paddingHorizontal: 16, paddingBottom: 24 },
   title: { color: '#fff', fontSize: 26, fontWeight: '700' },
   subtitle: { color: '#fff', opacity: 0.85, marginTop: 4 },
+
+  langRow: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 },
+  langOption: { color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: '600' },
+  langOptionActive: { color: '#fff' },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
 

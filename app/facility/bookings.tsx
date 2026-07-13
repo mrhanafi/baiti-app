@@ -1,5 +1,6 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Card, Chip, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,15 +31,16 @@ type Booking = {
 };
 
 const STATUS_META: Record<Booking['status'], { bg: string; fg: string; label: string }> = {
-  pending:   { bg: '#fef3c7', fg: '#92400e', label: 'Pending' },
-  confirmed: { bg: '#dcfce7', fg: '#15803d', label: 'Confirmed' },
-  cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'Cancelled' },
-  rejected:  { bg: '#fee2e2', fg: '#b91c1c', label: 'Rejected' },
+  pending:   { bg: '#fef3c7', fg: '#92400e', label: 'facility.status.pending' },
+  confirmed: { bg: '#dcfce7', fg: '#15803d', label: 'facility.status.confirmed' },
+  cancelled: { bg: '#f3f4f6', fg: '#6b7280', label: 'facility.status.cancelled' },
+  rejected:  { bg: '#fee2e2', fg: '#b91c1c', label: 'facility.status.rejected' },
 };
 
 export default function MyBookingsScreen() {
   const insets = useSafeAreaInsets();
   const { isTablet, contentMaxWidth } = useResponsive();
+  const { t } = useTranslation();
   const [scope, setScope] = useState<Scope>('upcoming');
   const [items, setItems] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,12 +67,12 @@ export default function MyBookingsScreen() {
 
   async function handleCancel(b: Booking) {
     Alert.alert(
-      'Cancel booking?',
+      t('facility.cancelBookingTitle'),
       `${b.facility.name} · ${formatDateTime(b.start_at)}`,
       [
-        { text: 'Keep', style: 'cancel' },
+        { text: t('facility.keep'), style: 'cancel' },
         {
-          text: 'Cancel booking',
+          text: t('facility.cancelBooking'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -78,9 +80,9 @@ export default function MyBookingsScreen() {
               await load(scope);
             } catch (err) {
               const msg = err instanceof ApiError
-                ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? 'Could not cancel.'
-                : 'Could not cancel.';
-              Alert.alert('Cancellation failed', msg);
+                ? (Object.values(err.body?.errors ?? {})[0] as string[] | undefined)?.[0] ?? t('facility.couldNotCancel')
+                : t('facility.couldNotCancel');
+              Alert.alert(t('facility.cancellationFailed'), msg);
             }
           },
         },
@@ -90,7 +92,7 @@ export default function MyBookingsScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="My bookings" />
+      <PurpleHeader title={t('facility.myBookings')} />
       <View style={styles.chipsRow}>
         {(['upcoming', 'past', 'all'] as Scope[]).map((s) => (
           <Chip
@@ -100,7 +102,7 @@ export default function MyBookingsScreen() {
             style={[styles.chip, scope === s && styles.chipActive]}
             textStyle={scope === s ? styles.chipTextActive : styles.chipText}
             compact>
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+            {t(`facility.scopes.${s}`)}
           </Chip>
         ))}
       </View>
@@ -111,7 +113,7 @@ export default function MyBookingsScreen() {
         <View style={styles.center}>
           <Icon source="calendar-blank" size={56} color="#9ca3af" />
           <Text variant="bodyMedium" style={{ marginTop: 12, opacity: 0.65 }}>
-            {scope === 'upcoming' ? 'No upcoming bookings.' : 'No bookings found.'}
+            {scope === 'upcoming' ? t('facility.noUpcomingBookings') : t('facility.noBookingsFound')}
           </Text>
         </View>
       ) : (
@@ -136,7 +138,7 @@ export default function MyBookingsScreen() {
                       {item.facility.name ?? '—'}
                     </Text>
                     <View style={[styles.pill, { backgroundColor: meta.bg }]}>
-                      <Text style={[styles.pillText, { color: meta.fg }]}>{meta.label}</Text>
+                      <Text style={[styles.pillText, { color: meta.fg }]}>{t(meta.label)}</Text>
                     </View>
                   </View>
                   <Text variant="bodySmall" style={styles.meta}>
@@ -149,13 +151,13 @@ export default function MyBookingsScreen() {
                     <View style={styles.depositNotice}>
                       <Icon source="cash" size={16} color="#92400e" />
                       <Text variant="bodySmall" style={{ color: '#92400e', flex: 1 }}>
-                        Bring RM {item.facility.deposit_amount.toFixed(2)} cash to JMB office.
+                        {t('facility.bringDepositShort', { amount: item.facility.deposit_amount.toFixed(2) })}
                       </Text>
                     </View>
                   ) : null}
                   {item.status === 'rejected' && item.rejection_reason ? (
                     <Text variant="bodySmall" style={[styles.notes, { color: '#b91c1c' }]}>
-                      Rejected: {item.rejection_reason}
+                      {t('facility.rejectedReason', { reason: item.rejection_reason })}
                     </Text>
                   ) : null}
                   {canCancel ? (
@@ -163,7 +165,7 @@ export default function MyBookingsScreen() {
                       mode="outlined"
                       onPress={() => handleCancel(item)}
                       style={{ marginTop: 12 }}>
-                      Cancel booking
+                      {t('facility.cancelBooking')}
                     </Button>
                   ) : null}
                 </Card.Content>

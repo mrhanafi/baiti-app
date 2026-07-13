@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, HelperText, Icon, Text, TextInput } from 'react-native-paper';
 
@@ -18,6 +19,7 @@ const SELECTED_UNIT_KEY = 'baiti.home.selected_unit_id';
 export default function NewRenovationScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const homes = user?.units ?? [];
   const [unitId, setUnitId] = useState<string>(homes[0]?.id ?? '');
@@ -76,9 +78,9 @@ export default function NewRenovationScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        setError(first?.[0] ?? 'Please fix the highlighted fields.');
+        setError(first?.[0] ?? t('renovation.form.fixFields'));
       } else {
-        setError('Could not reach the server.');
+        setError(t('renovation.form.serverError'));
       }
     }
     setLoading(false);
@@ -87,11 +89,11 @@ export default function NewRenovationScreen() {
   if (homes.length === 0) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="New Renovation Request" />
+        <PurpleHeader title={t('renovation.newTitle')} />
         <View style={styles.empty}>
           <Icon source="home-off-outline" size={48} color="#9ca3af" />
           <Text variant="bodyMedium" style={styles.emptyText}>
-            Verify your home first to request a renovation permit.
+            {t('renovation.verifyFirst')}
           </Text>
         </View>
       </View>
@@ -100,7 +102,7 @@ export default function NewRenovationScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="New Renovation Request" />
+      <PurpleHeader title={t('renovation.newTitle')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}>
@@ -115,10 +117,10 @@ export default function NewRenovationScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                    {boundHome.property_name ?? 'Your home'}
+                    {boundHome.property_name ?? t('renovation.yourHome')}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65, marginTop: 2 }}>
-                    Unit {boundHome.unit_number}
+                    {t('common.unit', { number: boundHome.unit_number })}
                   </Text>
                 </View>
               </Card.Content>
@@ -128,7 +130,7 @@ export default function NewRenovationScreen() {
           <Card style={styles.card}>
             <Card.Content>
               <TextInput
-                label="What work will be done? *"
+                label={t('renovation.form.descriptionLabel')}
                 value={description}
                 onChangeText={setDescription}
                 mode="outlined"
@@ -136,16 +138,16 @@ export default function NewRenovationScreen() {
                 contentStyle={{ paddingTop: 12, paddingBottom: 12 }}
                 multiline
                 numberOfLines={4}
-                placeholder="e.g. Kitchen cabinet replacement, new floor tiles in living room"
+                placeholder={t('renovation.form.descriptionPlaceholder')}
                 maxLength={5000}
               />
               <Pressable onPress={() => setShowFromPicker(true)}>
                 <TextInput
-                  label="Start date *"
+                  label={t('renovation.form.startDate')}
                   value={dateFrom ? dateFrom.toLocaleDateString() : ''}
                   mode="outlined"
                   style={styles.input}
-                  placeholder="Pick a date"
+                  placeholder={t('renovation.form.pickDate')}
                   editable={false}
                   pointerEvents="none"
                   right={<TextInput.Icon icon="calendar" onPress={() => setShowFromPicker(true)} />}
@@ -153,11 +155,11 @@ export default function NewRenovationScreen() {
               </Pressable>
               <Pressable onPress={() => setShowToPicker(true)}>
                 <TextInput
-                  label="End date *"
+                  label={t('renovation.form.endDate')}
                   value={dateTo ? dateTo.toLocaleDateString() : ''}
                   mode="outlined"
                   style={styles.input}
-                  placeholder="Pick a date"
+                  placeholder={t('renovation.form.pickDate')}
                   editable={false}
                   pointerEvents="none"
                   right={<TextInput.Icon icon="calendar" onPress={() => setShowToPicker(true)} />}
@@ -199,12 +201,12 @@ export default function NewRenovationScreen() {
                 />
               ) : null}
               <TextInput
-                label="Contractor company *"
+                label={t('renovation.form.contractorLabel')}
                 value={contractor}
                 onChangeText={setContractor}
                 mode="outlined"
                 style={styles.input}
-                placeholder="e.g. Wong Renovation Sdn Bhd"
+                placeholder={t('renovation.form.contractorPlaceholder')}
                 maxLength={255}
               />
 
@@ -219,13 +221,11 @@ export default function NewRenovationScreen() {
             disabled={submitDisabled}
             style={styles.submit}
             contentStyle={{ paddingVertical: 8 }}>
-            Submit request
+            {t('renovation.form.submit')}
           </Button>
 
           <Text variant="bodySmall" style={styles.disclaimer}>
-            Your JMB reviews the request and sets a refundable deposit (paid in
-            cash at the office). Once active, you can create gate passes for
-            your contractor.
+            {t('renovation.form.disclaimer')}
           </Text>
          </TabletContainer>
         </ScrollView>

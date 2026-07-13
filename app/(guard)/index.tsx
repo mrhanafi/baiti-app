@@ -1,5 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Card, Icon, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +29,7 @@ export default function GuardHomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { shift } = useGuardSession();
+  const { t } = useTranslation();
 
   const [passes, setPasses] = useState<Pass[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,6 +60,12 @@ export default function GuardHomeScreen() {
     .filter((p) => p.visit_state === 'upcoming' || p.visit_state === 'awaiting')
     .sort((a, b) => new Date(a.valid_from).getTime() - new Date(b.valid_from).getTime());
 
+  let elapsedLabel = '';
+  if (shift) {
+    const { h, m } = elapsed(shift.startedAt);
+    elapsedLabel = h === 0 ? t('guard.home.elapsedM', { m }) : t('guard.home.elapsedHM', { h, m });
+  }
+
   return (
     <View style={styles.container}>
       <ScrollView
@@ -70,9 +78,11 @@ export default function GuardHomeScreen() {
             <Icon source="shield-account" size={28} color="#fff" />
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.shiftName}>{shift?.staffName ?? 'No one on duty'}</Text>
+            <Text style={styles.shiftName}>{shift?.staffName ?? t('guard.home.noOneOnDuty')}</Text>
             <Text style={styles.shiftSub}>
-              {shift ? `On duty · started ${formatTime(shift.startedAt)} · ${elapsed(shift.startedAt)}` : 'Tap profile to pick someone'}
+              {shift
+                ? t('guard.home.onDutyStatus', { time: formatTime(shift.startedAt), elapsed: elapsedLabel })
+                : t('guard.home.tapProfileToPick')}
             </Text>
           </View>
         </View>
@@ -83,13 +93,13 @@ export default function GuardHomeScreen() {
             onPress={() => router.push('/guard-scan')}
             style={[styles.actionTile, styles.actionScan]}>
             <Icon source="qrcode-scan" size={36} color="#fff" />
-            <Text style={styles.actionScanLabel}>Scan QR</Text>
+            <Text style={styles.actionScanLabel}>{t('guard.home.scanQr')}</Text>
           </Pressable>
           <Pressable
             onPress={() => router.push('/walk-in')}
             style={[styles.actionTile, styles.actionWalkIn]}>
             <Icon source="account-plus" size={36} color={PRIMARY} />
-            <Text style={styles.actionWalkInLabel}>Walk-in</Text>
+            <Text style={styles.actionWalkInLabel}>{t('guard.home.walkIn')}</Text>
           </Pressable>
         </View>
 
@@ -99,26 +109,26 @@ export default function GuardHomeScreen() {
         ) : (
           <>
             <View style={styles.statsRow}>
-              <StatTile value={counted.length} label="Today" tint="#eef2ff" textColor="#4338ca" />
-              <StatTile value={inside.length} label="Inside" tint="#dbeafe" textColor="#1d4ed8" />
-              <StatTile value={done.length} label="Done" tint="#f3f4f6" textColor="#6b7280" />
+              <StatTile value={counted.length} label={t('guard.home.today')} tint="#eef2ff" textColor="#4338ca" />
+              <StatTile value={inside.length} label={t('guard.home.inside')} tint="#dbeafe" textColor="#1d4ed8" />
+              <StatTile value={done.length} label={t('guard.home.done')} tint="#f3f4f6" textColor="#6b7280" />
             </View>
 
             {/* Currently inside */}
             <View style={styles.sectionRow}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Currently inside ({inside.length})
+                {t('guard.home.currentlyInside', { count: inside.length })}
               </Text>
               {inside.length > 0 ? (
                 <Pressable onPress={() => router.push('/(guard)/today')}>
-                  <Text style={styles.seeAll}>See all</Text>
+                  <Text style={styles.seeAll}>{t('guard.home.seeAll')}</Text>
                 </Pressable>
               ) : null}
             </View>
             {inside.length === 0 ? (
               <Card style={styles.emptyCard}>
                 <Card.Content>
-                  <Text style={styles.emptyText}>No visitors inside right now.</Text>
+                  <Text style={styles.emptyText}>{t('guard.home.noVisitorsInside')}</Text>
                 </Card.Content>
               </Card>
             ) : (
@@ -134,9 +144,9 @@ export default function GuardHomeScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.passName}>{p.visitor_name}</Text>
                       <Text style={styles.passSub}>
-                        Unit {p.unit.unit_number ?? '—'}
+                        {t('common.unit', { number: p.unit.unit_number ?? '—' })}
                         {p.vehicle_plate ? ` · ${p.vehicle_plate}` : ''}
-                        {p.open_entry ? ` · in @ ${formatTime(p.open_entry.scanned_at)}` : ''}
+                        {p.open_entry ? ` · ${t('guard.home.inAt', { time: formatTime(p.open_entry.scanned_at) })}` : ''}
                       </Text>
                     </View>
                     <Icon source="chevron-right" size={20} color="#9ca3af" />
@@ -148,13 +158,13 @@ export default function GuardHomeScreen() {
             {/* Next expected */}
             <View style={[styles.sectionRow, { marginTop: 8 }]}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Next expected ({expected.length})
+                {t('guard.home.nextExpected', { count: expected.length })}
               </Text>
             </View>
             {expected.length === 0 ? (
               <Card style={styles.emptyCard}>
                 <Card.Content>
-                  <Text style={styles.emptyText}>No more expected today.</Text>
+                  <Text style={styles.emptyText}>{t('guard.home.noMoreExpected')}</Text>
                 </Card.Content>
               </Card>
             ) : (
@@ -170,7 +180,7 @@ export default function GuardHomeScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.passName}>{p.visitor_name}</Text>
                       <Text style={styles.passSub}>
-                        Unit {p.unit.unit_number ?? '—'} · {p.purpose}
+                        {t('common.unit', { number: p.unit.unit_number ?? '—' })} · {t(`guard.purposes.${p.purpose}`, { defaultValue: p.purpose })}
                         {p.vehicle_plate ? ` · ${p.vehicle_plate}` : ''}
                       </Text>
                     </View>
@@ -199,13 +209,10 @@ function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
-function elapsed(startedAt: string): string {
+function elapsed(startedAt: string): { h: number; m: number } {
   const ms = Date.now() - new Date(startedAt).getTime();
   const totalMin = Math.max(0, Math.floor(ms / 60000));
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  if (h === 0) return `${m}m elapsed`;
-  return `${h}h ${m}m elapsed`;
+  return { h: Math.floor(totalMin / 60), m: totalMin % 60 };
 }
 
 const styles = StyleSheet.create({

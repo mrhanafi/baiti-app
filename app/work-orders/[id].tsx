@@ -1,6 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -41,15 +42,17 @@ type WorkOrderDetail = WorkOrder & {
   updates: WoUpdate[];
 };
 
+// Values are i18n keys — render with t(TRANSITION_LABEL[...]).
 const TRANSITION_LABEL: Record<string, string> = {
-  in_progress: 'Start work',
-  on_hold: 'Put on hold',
-  completed: 'Mark completed',
+  in_progress: 'workOrders.startWork',
+  on_hold: 'workOrders.putOnHold',
+  completed: 'workOrders.markCompleted',
 };
 
 export default function WorkOrderDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [wo, setWo] = useState<WorkOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -76,7 +79,7 @@ export default function WorkOrderDetailScreen() {
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera disabled', 'Allow camera access in Settings to take a photo.');
+      Alert.alert(t('workOrders.cameraDisabledTitle'), t('workOrders.cameraDisabledBody'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 });
@@ -129,9 +132,9 @@ export default function WorkOrderDetailScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 422) {
         const first = Object.values(err.body?.errors ?? {})[0] as string[] | undefined;
-        Alert.alert('Could not post', first?.[0] ?? 'Add a note, status, or photo.');
+        Alert.alert(t('workOrders.couldNotPost'), first?.[0] ?? t('workOrders.postValidationHint'));
       } else {
-        Alert.alert('Could not post', 'Check your connection and try again.');
+        Alert.alert(t('workOrders.couldNotPost'), t('workOrders.checkConnection'));
       }
     }
     setPosting(false);
@@ -140,7 +143,7 @@ export default function WorkOrderDetailScreen() {
   if (loading) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Work Order" />
+        <PurpleHeader title={t('workOrders.detailTitle')} />
         <View style={styles.center}><ActivityIndicator /></View>
       </View>
     );
@@ -148,11 +151,11 @@ export default function WorkOrderDetailScreen() {
   if (!wo) {
     return (
       <View style={styles.container}>
-        <PurpleHeader title="Work Order" />
+        <PurpleHeader title={t('workOrders.detailTitle')} />
         <View style={styles.center}>
           <Icon source="alert-circle-outline" size={48} color="#9ca3af" />
-          <Text style={{ marginTop: 12, opacity: 0.7 }}>Work order not found.</Text>
-          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>Go back</Button>
+          <Text style={{ marginTop: 12, opacity: 0.7 }}>{t('workOrders.notFound')}</Text>
+          <Button onPress={() => router.back()} style={{ marginTop: 16 }}>{t('common.goBack')}</Button>
         </View>
       </View>
     );
@@ -165,7 +168,7 @@ export default function WorkOrderDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Work Order" />
+      <PurpleHeader title={t('workOrders.detailTitle')} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
         <ScrollView
           contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 32 }]}
@@ -179,18 +182,18 @@ export default function WorkOrderDetailScreen() {
                   <Text style={styles.jmbBadgeText}>{wo.organization.legal_name ?? '—'}</Text>
                 </View>
                 <View style={[styles.statusPill, { backgroundColor: s.bg }]}>
-                  <Text style={[styles.statusText, { color: s.fg }]}>{s.label}</Text>
+                  <Text style={[styles.statusText, { color: s.fg }]}>{t(s.label)}</Text>
                 </View>
               </View>
               <Text variant="titleLarge" style={styles.title}>{wo.title}</Text>
               <Text variant="bodySmall" style={styles.meta}>
                 {wo.location ?? '—'}
-                {wo.unit_number ? ` · Unit ${wo.unit_number}` : ''}
+                {wo.unit_number ? ` · ${t('common.unit', { number: wo.unit_number })}` : ''}
                 {wo.category ? ` · ${wo.category}` : ''}
               </Text>
               <Text variant="bodySmall" style={[styles.meta, { color: p.fg }]}>
-                Priority: {p.label}
-                {wo.due_date ? ` · Due ${new Date(wo.due_date).toLocaleDateString()}` : ''}
+                {t('workOrders.priority', { priority: t(p.label) })}
+                {wo.due_date ? ` · ${t('workOrders.due', { date: new Date(wo.due_date).toLocaleDateString() })}` : ''}
               </Text>
               {wo.description ? (
                 <Text variant="bodyMedium" style={styles.body}>{wo.description}</Text>
@@ -202,17 +205,17 @@ export default function WorkOrderDetailScreen() {
           {canPost ? (
             <Card style={styles.card}>
               <Card.Content>
-                <Text variant="titleSmall" style={{ fontWeight: '600', marginBottom: 8 }}>Post update</Text>
+                <Text variant="titleSmall" style={{ fontWeight: '600', marginBottom: 8 }}>{t('workOrders.postUpdate')}</Text>
 
                 {wo.allowed_transitions.length > 0 ? (
                   <View style={styles.transitionRow}>
-                    {wo.allowed_transitions.map((t) => (
+                    {wo.allowed_transitions.map((tr) => (
                       <Pressable
-                        key={t}
-                        onPress={() => setStatusChange(statusChange === t ? null : t)}
-                        style={[styles.transitionChip, statusChange === t && styles.transitionChipActive]}>
-                        <Text style={[styles.transitionText, statusChange === t && styles.transitionTextActive]}>
-                          {TRANSITION_LABEL[t] ?? t}
+                        key={tr}
+                        onPress={() => setStatusChange(statusChange === tr ? null : tr)}
+                        style={[styles.transitionChip, statusChange === tr && styles.transitionChipActive]}>
+                        <Text style={[styles.transitionText, statusChange === tr && styles.transitionTextActive]}>
+                          {TRANSITION_LABEL[tr] ? t(TRANSITION_LABEL[tr]) : tr}
                         </Text>
                       </Pressable>
                     ))}
@@ -225,7 +228,7 @@ export default function WorkOrderDetailScreen() {
                   mode="outlined"
                   multiline
                   numberOfLines={3}
-                  placeholder="e.g. Replaced the capacitor, testing now"
+                  placeholder={t('workOrders.notePlaceholder')}
                   maxLength={5000}
                   style={{ marginBottom: 8 }}
                   contentStyle={{ paddingTop: 12, paddingBottom: 12 }}
@@ -253,7 +256,9 @@ export default function WorkOrderDetailScreen() {
                   loading={posting}
                   disabled={submitDisabled}
                   style={{ marginTop: 12 }}>
-                  {statusChange ? TRANSITION_LABEL[statusChange] ?? 'Post update' : 'Post update'}
+                  {statusChange && TRANSITION_LABEL[statusChange]
+                    ? t(TRANSITION_LABEL[statusChange])
+                    : t('workOrders.postUpdate')}
                 </Button>
               </Card.Content>
             </Card>
@@ -261,15 +266,15 @@ export default function WorkOrderDetailScreen() {
             <View style={styles.doneNotice}>
               <Icon source="check-circle-outline" size={16} color="#15803d" />
               <Text variant="bodySmall" style={styles.doneNoticeText}>
-                This work order is {wo.status}. The office takes it from here.
+                {t('workOrders.doneNotice', { status: t(s.label) })}
               </Text>
             </View>
           )}
 
-          <Text variant="titleSmall" style={styles.sectionTitle}>History</Text>
+          <Text variant="titleSmall" style={styles.sectionTitle}>{t('workOrders.history')}</Text>
           {wo.updates.length === 0 ? (
             <Text variant="bodySmall" style={{ opacity: 0.6, textAlign: 'center', paddingVertical: 16 }}>
-              No updates yet.
+              {t('workOrders.noUpdates')}
             </Text>
           ) : (
             wo.updates.map((u) => (
@@ -283,10 +288,10 @@ export default function WorkOrderDetailScreen() {
                   </View>
                   {u.status_change ? (
                     <View style={styles.statusChangeRow}>
-                      <Text variant="bodySmall" style={{ opacity: 0.65 }}>Status →</Text>
+                      <Text variant="bodySmall" style={{ opacity: 0.65 }}>{t('workOrders.statusArrow')}</Text>
                       <View style={[styles.statusPill, { backgroundColor: WO_STATUS[u.status_change]?.bg ?? '#f3f4f6' }]}>
                         <Text style={[styles.statusText, { color: WO_STATUS[u.status_change]?.fg ?? '#6b7280' }]}>
-                          {WO_STATUS[u.status_change]?.label ?? u.status_change}
+                          {WO_STATUS[u.status_change] ? t(WO_STATUS[u.status_change].label) : u.status_change}
                         </Text>
                       </View>
                     </View>

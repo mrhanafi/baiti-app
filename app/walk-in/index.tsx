@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -27,12 +28,12 @@ const PRIMARY = '#7367F0';
 const PRIMARY_TINT = '#EEEDFD';
 
 const PURPOSES = [
-  { value: 'delivery', label: 'Delivery' },
-  { value: 'family', label: 'Family' },
-  { value: 'contractor', label: 'Contractor' },
-  { value: 'services', label: 'Services' },
-  { value: 'cleaner', label: 'Cleaner' },
-  { value: 'other', label: 'Other' },
+  { value: 'delivery', label: 'guard.purposes.delivery' },
+  { value: 'family', label: 'guard.purposes.family' },
+  { value: 'contractor', label: 'guard.purposes.contractor' },
+  { value: 'services', label: 'guard.purposes.services' },
+  { value: 'cleaner', label: 'guard.purposes.cleaner' },
+  { value: 'other', label: 'guard.purposes.other' },
 ];
 
 type UnitResult = {
@@ -46,6 +47,7 @@ type UnitResult = {
 
 export default function WalkInScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [name, setName] = useState('');
   const [ic, setIc] = useState('');
@@ -100,14 +102,14 @@ export default function WalkInScreen() {
         }),
       });
       Alert.alert(
-        'Walk-in logged',
-        `${data.pass.visitor_name} can enter unit ${data.pass.unit.unit_number}.`,
-        [{ text: 'OK', onPress: () => router.back() }],
+        t('guard.walkIn.logged'),
+        t('guard.walkIn.loggedBody', { name: data.pass.visitor_name, unit: data.pass.unit.unit_number }),
+        [{ text: t('guard.ok'), onPress: () => router.back() }],
       );
     } catch (err) {
       const msg = err instanceof ApiError
         ? (err.body?.errors?.unit_id?.[0] ?? err.body?.errors?.shift?.[0] ?? err.message)
-        : 'Could not log walk-in.';
+        : t('guard.walkIn.couldNotLog');
       setError(msg);
     }
     setLoading(false);
@@ -116,8 +118,8 @@ export default function WalkInScreen() {
   function handlePickUnit(u: UnitResult) {
     if (!u.has_owner) {
       Alert.alert(
-        'Unit not registered',
-        'This unit has no registered owner. Direct the visitor to the JMB office.',
+        t('guard.walkIn.unitNotRegistered'),
+        t('guard.walkIn.unitNotRegisteredBody'),
       );
       return;
     }
@@ -128,7 +130,7 @@ export default function WalkInScreen() {
 
   return (
     <View style={styles.container}>
-      <PurpleHeader title="Walk-in visitor" />
+      <PurpleHeader title={t('guard.walkIn.title')} />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -138,7 +140,7 @@ export default function WalkInScreen() {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive">
 
-          <Text variant="titleSmall" style={styles.section}>Visiting which unit?</Text>
+          <Text variant="titleSmall" style={styles.section}>{t('guard.walkIn.whichUnit')}</Text>
           {unit ? (
             <Card style={styles.unitCard}>
               <Card.Content style={styles.unitCardContent}>
@@ -147,11 +149,11 @@ export default function WalkInScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text variant="titleSmall" style={{ fontWeight: '600' }}>
-                    Unit {unit.unit_number}
+                    {t('common.unit', { number: unit.unit_number })}
                     {unit.block_name ? ` · ${unit.block_name}` : ''}
                   </Text>
                   <Text variant="bodySmall" style={{ opacity: 0.65 }}>
-                    {unit.property_name}{unit.owner_name ? ` · Owner: ${unit.owner_name}` : ''}
+                    {unit.property_name}{unit.owner_name ? ` · ${t('guard.walkIn.owner', { name: unit.owner_name })}` : ''}
                   </Text>
                 </View>
                 <Pressable onPress={() => setUnit(null)}>
@@ -165,12 +167,12 @@ export default function WalkInScreen() {
                 value={unitQuery}
                 onChangeText={setUnitQuery}
                 mode="outlined"
-                placeholder="Search by unit number (e.g. B-05-01)"
+                placeholder={t('guard.walkIn.searchUnitPlaceholder')}
                 left={<TextInput.Icon icon="magnify" />}
                 autoCapitalize="characters"
                 style={styles.input}
               />
-              {unitSearching ? <HelperText type="info" visible>Searching…</HelperText> : null}
+              {unitSearching ? <HelperText type="info" visible>{t('guard.walkIn.searching')}</HelperText> : null}
               {unitResults.length > 0 ? (
                 <View style={{ marginTop: 4 }}>
                   {unitResults.map((u) => (
@@ -184,7 +186,7 @@ export default function WalkInScreen() {
                             {u.unit_number}{u.block_name ? ` · ${u.block_name}` : ''}
                           </Text>
                           <Text variant="bodySmall" style={{ opacity: 0.65 }}>
-                            {u.owner_name ?? 'No owner registered'}
+                            {u.owner_name ?? t('guard.walkIn.noOwnerRegistered')}
                           </Text>
                         </View>
                       </Card.Content>
@@ -195,16 +197,16 @@ export default function WalkInScreen() {
             </>
           )}
 
-          <Text variant="titleSmall" style={styles.section}>Visitor</Text>
+          <Text variant="titleSmall" style={styles.section}>{t('guard.walkIn.visitor')}</Text>
           <TextInput
-            label="Full name *"
+            label={t('guard.walkIn.fullName')}
             value={name}
             onChangeText={setName}
             mode="outlined"
             style={styles.input}
           />
           <TextInput
-            label="IC or driving licence number *"
+            label={t('guard.walkIn.icNumber')}
             value={ic}
             onChangeText={setIc}
             mode="outlined"
@@ -213,26 +215,26 @@ export default function WalkInScreen() {
             autoCapitalize="characters"
           />
           <TextInput
-            label="Phone (optional)"
+            label={t('guard.walkIn.phoneOptional')}
             value={phone}
             onChangeText={(v) => setPhone(v.replace(/\D/g, ''))}
             mode="outlined"
             keyboardType="phone-pad"
             style={styles.input}
-            placeholder="121234567"
+            placeholder={t('guard.walkIn.phonePlaceholder')}
             left={<TextInput.Affix text="+60" />}
           />
           <TextInput
-            label="Vehicle plate (optional)"
+            label={t('guard.walkIn.plateOptional')}
             value={plate}
-            onChangeText={(t) => setPlate(t.toUpperCase())}
+            onChangeText={(v) => setPlate(v.toUpperCase())}
             mode="outlined"
             autoCapitalize="characters"
             style={styles.input}
-            placeholder="PJW1234"
+            placeholder={t('guard.walkIn.platePlaceholder')}
           />
 
-          <Text variant="titleSmall" style={styles.section}>Purpose</Text>
+          <Text variant="titleSmall" style={styles.section}>{t('guard.walkIn.purpose')}</Text>
           <View style={styles.purposeGrid}>
             {PURPOSES.map((p) => (
               <Pressable
@@ -240,7 +242,7 @@ export default function WalkInScreen() {
                 onPress={() => setPurpose(p.value)}
                 style={[styles.purposeChip, purpose === p.value && styles.purposeChipActive]}>
                 <Text style={[styles.purposeText, purpose === p.value && styles.purposeTextActive]}>
-                  {p.label}
+                  {t(p.label)}
                 </Text>
               </Pressable>
             ))}
@@ -255,11 +257,11 @@ export default function WalkInScreen() {
             disabled={submitDisabled}
             style={styles.submit}
             contentStyle={styles.submitContent}>
-            Log walk-in &amp; let visitor in
+            {t('guard.walkIn.submit')}
           </Button>
 
           <Text variant="bodySmall" style={styles.disclaimer}>
-            Walk-ins are valid for 8 hours from now. The host gets an email notification when you submit this form.
+            {t('guard.walkIn.disclaimer')}
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
