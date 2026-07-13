@@ -1,9 +1,11 @@
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Avatar, Button, Card, Icon, List, Switch, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth/session';
+import { LANGUAGES, setLocale, type LocaleCode } from '@/lib/i18n';
 import { useThemePref } from '@/lib/theme/provider';
 
 const PRIMARY = '#7367F0';
@@ -13,6 +15,7 @@ export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { mode, setMode } = useThemePref();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
   const isDark = mode === 'dark';
 
   const initial = (user?.name?.[0] ?? '?').toUpperCase();
@@ -40,12 +43,12 @@ export default function ProfileScreen() {
           </Card.Content>
         </Card>
 
-        <Text variant="titleSmall" style={styles.sectionHeader}>My homes</Text>
+        <Text variant="titleSmall" style={styles.sectionHeader}>{t('profile.myHomes')}</Text>
         {homes.length === 0 ? (
           <Card style={styles.card}>
             <Card.Content>
               <Text variant="bodySmall" style={styles.subtle}>
-                No homes yet. Verify with your IC to link your first unit.
+                {t('profile.noHomes')}
               </Text>
             </Card.Content>
           </Card>
@@ -61,7 +64,7 @@ export default function ProfileScreen() {
                     {home.property_name ?? 'Property'}
                   </Text>
                   <Text variant="bodySmall" style={styles.subtle}>
-                    Unit {home.unit_number}
+                    {t('common.unit', { number: home.unit_number })}
                     {home.block_name ? ` · ${home.block_name}` : ''}
                   </Text>
                   {home.organization_name ? (
@@ -80,14 +83,14 @@ export default function ProfileScreen() {
           icon="plus"
           onPress={() => router.push('/claim')}
           style={styles.addHome}>
-          Add a home
+          {t('profile.addHome')}
         </Button>
 
         <List.Section style={styles.list}>
-          <List.Subheader>Requests</List.Subheader>
+          <List.Subheader>{t('profile.requests')}</List.Subheader>
           <List.Item
-            title="Renovation permits"
-            description="Ask your JMB before renovating"
+            title={t('profile.renovationPermits')}
+            description={t('profile.renovationPermitsDesc')}
             left={(props) => <List.Icon {...props} icon="hammer" />}
             right={(props) => <List.Icon {...props} icon="chevron-right" />}
             onPress={() => router.push('/renovation')}
@@ -95,12 +98,27 @@ export default function ProfileScreen() {
         </List.Section>
 
         <List.Section style={styles.list}>
-          <List.Subheader>Appearance</List.Subheader>
+          <List.Subheader>{t('profile.appearance')}</List.Subheader>
           <List.Item
-            title="Dark mode"
+            title={t('profile.darkMode')}
             left={(props) => <List.Icon {...props} icon="theme-light-dark" />}
             right={() => <Switch value={isDark} onValueChange={handleThemeToggle} />}
           />
+        </List.Section>
+
+        <List.Section style={styles.list}>
+          <List.Subheader>{t('profile.language')}</List.Subheader>
+          {LANGUAGES.map((lang) => (
+            <List.Item
+              key={lang.code}
+              title={lang.label}
+              left={(props) => <List.Icon {...props} icon="translate" />}
+              right={(props) =>
+                i18n.language === lang.code ? <List.Icon {...props} icon="check" color={PRIMARY} /> : null
+              }
+              onPress={() => void setLocale(lang.code as LocaleCode)}
+            />
+          ))}
         </List.Section>
 
         <Button
@@ -109,7 +127,7 @@ export default function ProfileScreen() {
           onPress={signOut}
           style={styles.logout}
           textColor="#E53935">
-          Sign out
+          {t('profile.signOut')}
         </Button>
       </ScrollView>
     </SafeAreaView>

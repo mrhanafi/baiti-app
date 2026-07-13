@@ -1,0 +1,38 @@
+{
+  "common": {
+    "unit": "Unit {{number}}",
+    "viewAll": "Lihat semua",
+    "cancel": "Batal",
+    "save": "Simpan",
+    "goBack": "Kembali",
+    "comingSoon": "Modul {{feature}} belum tersedia. Akan datang."
+  },
+  "profile": {
+    "myHomes": "Kediaman saya",
+    "noHomes": "Tiada kediaman lagi. Sahkan dengan IC anda untuk memautkan unit pertama.",
+    "addHome": "Tambah kediaman",
+    "requests": "Permohonan",
+    "renovationPermits": "Permit ubah suai",
+    "renovationPermitsDesc": "Mohon kebenaran JMB sebelum mengubah suai",
+    "appearance": "Paparan",
+    "darkMode": "Mod gelap",
+    "language": "Bahasa",
+    "signOut": "Log keluar"
+  },
+  "home": {
+    "greeting": "Hai, {{name}} 👋",
+    "services": "Perkhidmatan",
+    "tiles": {
+      "complaints": "Aduan",
+      "maintenance": "Penyelenggaraan",
+      "facility": "Kemudahan",
+      "utilities": "Utiliti",
+      "announcements": "Pengumuman",
+      "workOrders": "Tugasan Saya"
+    },
+    "todaysVisitors": "Pelawat hari ini",
+    "noVisitorsToday": "Tiada pelawat dijangka hari ini.",
+    "latestAnnouncements": "Pengumuman terkini",
+    "noAnnouncements": "Tiada pengumuman lagi."
+  }
+}

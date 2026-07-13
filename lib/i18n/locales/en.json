@@ -1,0 +1,38 @@
+{
+  "common": {
+    "unit": "Unit {{number}}",
+    "viewAll": "View all",
+    "cancel": "Cancel",
+    "save": "Save",
+    "goBack": "Go back",
+    "comingSoon": "{{feature}} module is not built yet. Coming soon."
+  },
+  "profile": {
+    "myHomes": "My homes",
+    "noHomes": "No homes yet. Verify with your IC to link your first unit.",
+    "addHome": "Add a home",
+    "requests": "Requests",
+    "renovationPermits": "Renovation permits",
+    "renovationPermitsDesc": "Ask your JMB before renovating",
+    "appearance": "Appearance",
+    "darkMode": "Dark mode",
+    "language": "Language",
+    "signOut": "Sign out"
+  },
+  "home": {
+    "greeting": "Hi, {{name}} 👋",
+    "services": "Services",
+    "tiles": {
+      "complaints": "Complaints",
+      "maintenance": "Maintenance",
+      "facility": "Facility",
+      "utilities": "Utilities",
+      "announcements": "Announcements",
+      "workOrders": "My Work Orders"
+    },
+    "todaysVisitors": "Today's visitors",
+    "noVisitorsToday": "No visitors expected today.",
+    "latestAnnouncements": "Latest announcements",
+    "noAnnouncements": "No announcements yet."
+  }
+}

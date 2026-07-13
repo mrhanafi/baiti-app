@@ -7,6 +7,7 @@ import { PaperProvider } from 'react-native-paper';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/lib/auth/session';
+import { loadStoredLocale } from '@/lib/i18n';
 import { GuardSessionProvider, useGuardSession } from '@/lib/guard/session';
 import { PushListeners } from '@/lib/push/listeners';
 import { paperDarkTheme, paperLightTheme } from '@/lib/theme/paper-theme';
@@ -124,6 +125,11 @@ function ThemedShell({ children }: { children: ReactNode }) {
 }
 
 export default function RootLayout() {
+  // Apply the stored language choice once on boot (default stays English).
+  useEffect(() => {
+    void loadStoredLocale();
+  }, []);
+
   return (
     <ThemePrefProvider>
       <ThemedShell>

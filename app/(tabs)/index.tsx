@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Icon, IconButton, Text, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -40,18 +41,18 @@ type AnnouncementPreview = {
 };
 
 type ServiceItem = {
-  label: string;
+  labelKey: string;  // i18n key under home.tiles
   icon: string;
   href?: string;  // tap target — undefined means "coming soon" alert
   module?: string;  // optional module key — tile hidden when the JMB has it disabled
 };
 
 const SERVICES: ServiceItem[] = [
-  { label: 'Complaints', icon: 'comment-alert', href: '/complaints', module: 'community' },
-  { label: 'Maintenance', icon: 'tools', href: '/building-maintenance', module: 'maintenance' },
-  { label: 'Facility', icon: 'pool', href: '/facility', module: 'facility' },
-  { label: 'Utilities', icon: 'lightning-bolt', href: '/utilities' },
-  { label: 'Announcements', icon: 'bullhorn', href: '/announcements', module: 'community' },
+  { labelKey: 'home.tiles.complaints', icon: 'comment-alert', href: '/complaints', module: 'community' },
+  { labelKey: 'home.tiles.maintenance', icon: 'tools', href: '/building-maintenance', module: 'maintenance' },
+  { labelKey: 'home.tiles.facility', icon: 'pool', href: '/facility', module: 'facility' },
+  { labelKey: 'home.tiles.utilities', icon: 'lightning-bolt', href: '/utilities' },
+  { labelKey: 'home.tiles.announcements', icon: 'bullhorn', href: '/announcements', module: 'community' },
 ];
 
 export default function HomeScreen() {
@@ -59,6 +60,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const theme = useTheme();
+  const { t } = useTranslation();
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   // Selected unit — persists across launches. Falls back to first unit if
@@ -91,7 +93,7 @@ export default function HomeScreen() {
   // Mixed accounts: an owner who is also field staff somewhere gets a
   // work-orders tile (staff-only accounts skip Home entirely).
   if (user?.roles?.includes('staff')) {
-    services.push({ label: 'My Work Orders', icon: 'clipboard-list', href: '/work-orders' });
+    services.push({ labelKey: 'home.tiles.workOrders', icon: 'clipboard-list', href: '/work-orders' });
   }
 
   const [checking, setChecking] = useState(false);
@@ -139,7 +141,7 @@ export default function HomeScreen() {
     if (service.href) {
       router.push(service.href as never);
     } else {
-      Alert.alert(service.label, `${service.label} module is not built yet. Coming soon.`);
+      Alert.alert(t(service.labelKey), t('common.comingSoon', { feature: t(service.labelKey) }));
     }
   }
 
@@ -162,7 +164,7 @@ export default function HomeScreen() {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <StatusBar style="light" />
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
+          <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>
         </View>
         <View style={styles.emptyStateContainer}>
           <View style={styles.emptyIcon}>
@@ -193,7 +195,7 @@ export default function HomeScreen() {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <StatusBar style="light" />
         <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
-          <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
+          <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>
         </View>
         <View style={styles.emptyStateContainer}>
           <View style={styles.pendingIcon}>
@@ -235,7 +237,7 @@ export default function HomeScreen() {
       {/* Purple header — extends behind the status bar via paddingTop. */}
       <View style={[styles.header, { paddingTop: insets.top + 16 }]}>
         <View style={styles.headerTop}>
-          <Text style={styles.greeting}>Hi, {firstName} 👋</Text>
+          <Text style={styles.greeting}>{t('home.greeting', { name: firstName })}</Text>
           <IconButton icon="bell-outline" iconColor="#fff" size={24} onPress={() => {}} />
         </View>
 
@@ -266,7 +268,7 @@ export default function HomeScreen() {
        <TabletContainer>
         <View style={styles.sectionRow}>
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Today&apos;s visitors
+            {t('home.todaysVisitors')}
           </Text>
           {todayPasses.length > 0 ? (
             <Pressable onPress={() => router.push('/(tabs)/visitors')}>
@@ -277,7 +279,7 @@ export default function HomeScreen() {
         {todayPasses.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
-              <Text style={styles.emptyText}>No visitors today.</Text>
+              <Text style={styles.emptyText}>{t('home.noVisitorsToday')}</Text>
             </Card.Content>
           </Card>
         ) : (
@@ -316,7 +318,7 @@ export default function HomeScreen() {
 
         <View style={styles.sectionRow}>
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Latest announcements{unreadCount > 0 ? ` (${unreadCount} new)` : ''}
+            {t('home.latestAnnouncements')}{unreadCount > 0 ? ` (${unreadCount} new)` : ''}
           </Text>
           {announcements.length > 0 ? (
             <Pressable onPress={() => router.push('/announcements')}>
@@ -327,7 +329,7 @@ export default function HomeScreen() {
         {announcements.length === 0 ? (
           <Card style={styles.emptyCard}>
             <Card.Content>
-              <Text style={styles.emptyText}>No announcements yet.</Text>
+              <Text style={styles.emptyText}>{t('home.noAnnouncements')}</Text>
             </Card.Content>
           </Card>
         ) : (
@@ -373,12 +375,12 @@ export default function HomeScreen() {
         )}
 
         <Text variant="titleMedium" style={styles.sectionTitle}>
-          Services
+          {t('home.services')}
         </Text>
         <View style={styles.servicesGrid}>
           {services.map((service) => (
             <Card
-              key={service.label}
+              key={service.labelKey}
               style={styles.serviceCard}
               onPress={() => handleServicePress(service)}>
               <Card.Content style={styles.serviceContent}>
@@ -386,7 +388,7 @@ export default function HomeScreen() {
                   <Icon source={service.icon} size={28} color={PRIMARY} />
                 </View>
                 <Text variant="bodyMedium" style={styles.serviceLabel}>
-                  {service.label}
+                  {t(service.labelKey)}
                 </Text>
               </Card.Content>
             </Card>
