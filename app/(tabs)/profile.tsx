@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Avatar, Button, Card, Icon, List, Switch, Text } from 'react-native-paper';
+import { Avatar, Button, Card, Icon, List, SegmentedButtons, Switch, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/lib/auth/session';
-import { LANGUAGES, setLocale, type LocaleCode } from '@/lib/i18n';
+import { setLocale, type LocaleCode } from '@/lib/i18n';
 import { useThemePref } from '@/lib/theme/provider';
 
 const PRIMARY = '#7367F0';
@@ -108,17 +108,22 @@ export default function ProfileScreen() {
 
         <List.Section style={styles.list}>
           <List.Subheader>{t('profile.language')}</List.Subheader>
-          {LANGUAGES.map((lang) => (
-            <List.Item
-              key={lang.code}
-              title={lang.label}
-              left={(props) => <List.Icon {...props} icon="translate" />}
-              right={(props) =>
-                i18n.language === lang.code ? <List.Icon {...props} icon="check" color={PRIMARY} /> : null
-              }
-              onPress={() => void setLocale(lang.code as LocaleCode)}
-            />
-          ))}
+          <List.Item
+            title={i18n.language === 'ms' ? 'Bahasa Melayu' : 'English'}
+            left={(props) => <List.Icon {...props} icon="translate" />}
+            right={() => (
+              <SegmentedButtons
+                value={i18n.language}
+                onValueChange={(v) => void setLocale(v as LocaleCode)}
+                density="small"
+                style={{ width: 140 }}
+                buttons={[
+                  { value: 'en', label: 'EN' },
+                  { value: 'ms', label: 'BM' },
+                ]}
+              />
+            )}
+          />
         </List.Section>
 
         <Button
