@@ -802,5 +802,11 @@
       "unitNotRegistered": "Unit not registered",
       "unitNotRegisteredBody": "This unit has no registered owner. Direct the visitor to the JMB office."
     }
+  },
+  "tabs": {
+    "home": "Home",
+    "visitors": "Visitors",
+    "bills": "Bills",
+    "profile": "Profile"
   }
 }

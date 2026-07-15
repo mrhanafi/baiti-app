@@ -39,7 +39,7 @@
       "workOrders": "Tugasan Saya"
     },
     "todaysVisitors": "Pelawat hari ini",
-    "noVisitorsToday": "Tiada pelawat dijangka hari ini.",
+    "noVisitorsToday": "Tiada pelawat dijangka pada hari ini.",
     "latestAnnouncements": "Pengumuman terkini",
     "noAnnouncements": "Tiada pengumuman lagi."
   },
@@ -268,9 +268,9 @@
     "newVisitor": "Pelawat baru",
     "newEvent": "Acara baru (pautan jemputan)",
     "empty": {
-      "today": "Tiada pas untuk hari ini lagi.",
-      "upcoming": "Tiada pas akan datang lagi.",
-      "past": "Tiada pas yang lepas."
+      "today": "Tiada pas pelawat untuk hari ini.",
+      "upcoming": "Tiada pas pelawat akan datang.",
+      "past": "Tiada pas pelawat yang lepas."
     },
     "emptyHint": "Tekan + untuk buat pas pelawat atau acara.",
     "registered": "{{count}} berdaftar",
@@ -802,5 +802,11 @@
       "unitNotRegistered": "Unit tidak berdaftar",
       "unitNotRegisteredBody": "Unit ini tiada pemilik berdaftar. Arahkan pelawat ke pejabat JMB."
     }
+  },
+  "tabs": {
+    "home": "Utama",
+    "visitors": "Pelawat",
+    "bills": "Bil",
+    "profile": "Profil"
   }
 }
