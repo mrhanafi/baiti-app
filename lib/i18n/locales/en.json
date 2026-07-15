@@ -457,7 +457,9 @@
       "serverError": "Could not reach the server.",
       "submit": "Submit request",
       "disclaimer": "Your JMB reviews the request and sets a refundable deposit (paid in cash at the office). Once active, you can create gate passes for your contractor."
-    }
+    },
+    "depositPayOnlineHint": "Pay the deposit right here in the app — your permit activates automatically once payment clears. Cash at the office also works if your JMB allows it.",
+    "payDepositInApp": "Pay deposit in app"
   },
   "workOrders": {
     "title": "My Work Orders",

@@ -21,6 +21,7 @@ export type Permit = {
   status: 'pending' | 'approved' | 'rejected' | 'active' | 'closed';
   deposit_amount: number | null;
   deposit_status: string | null;
+  deposit_invoice_id: string | null;
   refund_amount: number | null;
   notes: string | null;
   unit_number: string | null;

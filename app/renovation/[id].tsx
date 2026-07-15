@@ -98,8 +98,17 @@ export default function RenovationDetailScreen() {
                 {t('renovation.depositRequired', { amount: permit.deposit_amount.toFixed(2) })}
               </Text>
               <Text variant="bodySmall" style={{ marginTop: 4, opacity: 0.75 }}>
-                {t('renovation.depositInstructions')}
+                {permit.deposit_invoice_id ? t('renovation.depositPayOnlineHint') : t('renovation.depositInstructions')}
               </Text>
+              {permit.deposit_invoice_id ? (
+                <Button
+                  mode="contained"
+                  icon="credit-card-outline"
+                  onPress={() => router.push({ pathname: '/billing/[id]', params: { id: permit.deposit_invoice_id! } })}
+                  style={{ marginTop: 12 }}>
+                  {t('renovation.payDepositInApp')}
+                </Button>
+              ) : null}
               {permit.notes ? (
                 <Text variant="bodySmall" style={{ marginTop: 8, fontStyle: 'italic', opacity: 0.75 }}>
                   {t('renovation.jmbNotes', { notes: permit.notes })}
